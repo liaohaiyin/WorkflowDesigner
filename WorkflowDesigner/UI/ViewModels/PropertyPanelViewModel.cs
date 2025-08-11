@@ -16,6 +16,10 @@ namespace WorkflowDesigner.UI.ViewModels
         private WorkflowNodeViewModel _selectedNode;
         private readonly IUserService _userService;
 
+        public PropertyPanelViewModel()
+        {
+            
+        }
         public PropertyPanelViewModel(IUserService userService)
         {
             _userService = userService;

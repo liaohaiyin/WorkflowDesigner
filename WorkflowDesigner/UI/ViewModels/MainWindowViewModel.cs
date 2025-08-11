@@ -3,16 +3,11 @@ using Newtonsoft.Json;
 using Prism.Commands;
 using Prism.Mvvm;
 using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 using WorkflowDesigner.Core.Interfaces;
 using WorkflowDesigner.Core.Models;
+using WorkflowDesigner.Core.Services;
 using WorkflowDesigner.Engine;
 using WorkflowDesigner.UI.Views;
 
@@ -29,6 +24,37 @@ namespace WorkflowDesigner.UI.ViewModels
         private bool _isOutputPanelVisible = true;
         private WorkflowDefinition _currentWorkflow;
 
+        // 子视图模型
+        public ToolboxViewModel ToolboxViewModel { get; private set; }
+        public WorkflowDesignerViewModel DesignerViewModel { get; private set; }
+        public PropertyPanelViewModel PropertyPanelViewModel { get; private set; }
+        public WorkflowMonitorViewModel MonitorViewModel { get; private set; }
+        public OutputPanelViewModel OutputPanelViewModel { get; private set; }
+
+        // 默认构造函数 - 创建基本功能
+        public MainWindowViewModel()
+        {
+            try
+            {
+                // 创建默认的服务实例
+                CreateDefaultServices();
+                InitializeViewModels();
+                InitializeCommands();
+                StartTimeTimer();
+                SetupEventHandlers();
+
+                StatusMessage = "应用程序已启动（基本模式）";
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"初始化失败: {ex.Message}";
+                // 创建最基本的视图模型
+                CreateMinimalViewModels();
+                InitializeCommands();
+            }
+        }
+
+        // 依赖注入构造函数 - 完整功能
         public MainWindowViewModel(
             IWorkflowEngine workflowEngine,
             IWorkflowRepository workflowRepository,
@@ -36,7 +62,7 @@ namespace WorkflowDesigner.UI.ViewModels
             WorkflowDesignerViewModel designerViewModel,
             PropertyPanelViewModel propertyPanelViewModel,
             WorkflowMonitorViewModel monitorViewModel,
-            OutputPanelViewModel outputPanelViewModel)
+            OutputPanelViewModel outputPanelViewModel) : this()
         {
             _workflowEngine = workflowEngine;
             _workflowRepository = workflowRepository;
@@ -47,15 +73,12 @@ namespace WorkflowDesigner.UI.ViewModels
             MonitorViewModel = monitorViewModel;
             OutputPanelViewModel = outputPanelViewModel;
 
-            InitializeCommands();
-            StartTimeTimer();
-
-            // 绑定设计器事件
-            DesignerViewModel.NodeSelectionChanged += OnNodeSelectionChanged;
-            DesignerViewModel.WorkflowChanged += OnWorkflowChanged;
+            SetupEventHandlers();
+            StatusMessage = "应用程序已启动（完整模式）";
         }
 
-        // 属性
+        #region 属性
+
         public string StatusMessage
         {
             get => _statusMessage;
@@ -92,14 +115,10 @@ namespace WorkflowDesigner.UI.ViewModels
             set => SetProperty(ref _currentWorkflow, value);
         }
 
-        // 子视图模型
-        public ToolboxViewModel ToolboxViewModel { get; }
-        public WorkflowDesignerViewModel DesignerViewModel { get; }
-        public PropertyPanelViewModel PropertyPanelViewModel { get; }
-        public WorkflowMonitorViewModel MonitorViewModel { get; }
-        public OutputPanelViewModel OutputPanelViewModel { get; }
+        #endregion
 
-        // 命令
+        #region 命令
+
         public ICommand NewWorkflowCommand { get; private set; }
         public ICommand OpenWorkflowCommand { get; private set; }
         public ICommand SaveWorkflowCommand { get; private set; }
@@ -113,6 +132,64 @@ namespace WorkflowDesigner.UI.ViewModels
         public ICommand PauseWorkflowCommand { get; private set; }
         public ICommand StopWorkflowCommand { get; private set; }
         public ICommand AboutCommand { get; private set; }
+
+        #endregion
+
+        #region 初始化方法
+
+        private void CreateDefaultServices()
+        {
+            try
+            {
+                // 创建默认的服务实例（如果依赖注入不可用）
+                // 注意：这些服务可能功能有限，因为它们没有数据库连接
+
+                // 这里暂时不创建服务，避免数据库连接问题
+                // 实际的服务创建将通过依赖注入完成
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"创建默认服务失败: {ex.Message}");
+            }
+        }
+
+        private void InitializeViewModels()
+        {
+            try
+            {
+                // 创建基本的视图模型
+                ToolboxViewModel = new ToolboxViewModel();
+                DesignerViewModel = new WorkflowDesignerViewModel();
+                PropertyPanelViewModel = new PropertyPanelViewModel(); // 使用无参构造函数
+                MonitorViewModel = new WorkflowMonitorViewModel(); // 使用无参构造函数
+                OutputPanelViewModel = new OutputPanelViewModel();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"初始化视图模型失败: {ex.Message}");
+                CreateMinimalViewModels();
+            }
+        }
+
+        private void CreateMinimalViewModels()
+        {
+            // 创建最基本的视图模型实例
+            try
+            {
+                ToolboxViewModel = new ToolboxViewModel();
+                DesignerViewModel = new WorkflowDesignerViewModel();
+                OutputPanelViewModel = new OutputPanelViewModel();
+
+                // 这些视图模型如果创建失败，设置为null
+                PropertyPanelViewModel = null;
+                MonitorViewModel = null;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"创建最小视图模型失败: {ex.Message}");
+                // 如果连最基本的都创建不了，那就只能让它们为null了
+            }
+        }
 
         private void InitializeCommands()
         {
@@ -133,15 +210,52 @@ namespace WorkflowDesigner.UI.ViewModels
 
         private void StartTimeTimer()
         {
-            var timer = new System.Windows.Threading.DispatcherTimer();
-            timer.Interval = TimeSpan.FromSeconds(1);
-            timer.Tick += (s, e) => CurrentTime = DateTime.Now;
-            timer.Start();
+            try
+            {
+                var timer = new System.Windows.Threading.DispatcherTimer();
+                timer.Interval = TimeSpan.FromSeconds(1);
+                timer.Tick += (s, e) => CurrentTime = DateTime.Now;
+                timer.Start();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"启动时间定时器失败: {ex.Message}");
+            }
         }
+
+        private void SetupEventHandlers()
+        {
+            try
+            {
+                if (DesignerViewModel != null)
+                {
+                    DesignerViewModel.NodeSelectionChanged += OnNodeSelectionChanged;
+                    DesignerViewModel.WorkflowChanged += OnWorkflowChanged;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"设置事件处理器失败: {ex.Message}");
+            }
+        }
+
+        #endregion
+
+        #region 事件处理
 
         private void OnNodeSelectionChanged(object sender, EventArgs e)
         {
-            PropertyPanelViewModel.SelectedNode = DesignerViewModel.SelectedNode;
+            try
+            {
+                if (PropertyPanelViewModel != null && DesignerViewModel != null)
+                {
+                    PropertyPanelViewModel.SelectedNode = DesignerViewModel.SelectedNode;
+                }
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"节点选择处理失败: {ex.Message}";
+            }
         }
 
         private void OnWorkflowChanged(object sender, EventArgs e)
@@ -150,14 +264,25 @@ namespace WorkflowDesigner.UI.ViewModels
             RaiseCanExecuteChanged();
         }
 
+        #endregion
+
+        #region 命令实现
+
         private void OnNewWorkflow()
         {
-            if (CheckForUnsavedChanges())
+            try
             {
-                DesignerViewModel.CreateNewWorkflow();
-                CurrentWorkflow = null;
-                StatusMessage = "创建新工作流";
-                OutputPanelViewModel.AddMessage("创建新工作流");
+                if (CheckForUnsavedChanges())
+                {
+                    DesignerViewModel?.CreateNewWorkflow();
+                    CurrentWorkflow = null;
+                    StatusMessage = "创建新工作流";
+                    OutputPanelViewModel?.AddMessage("创建新工作流");
+                }
+            }
+            catch (Exception ex)
+            {
+                HandleCommandException("创建新工作流", ex);
             }
         }
 
@@ -167,7 +292,7 @@ namespace WorkflowDesigner.UI.ViewModels
             {
                 var openFileDialog = new OpenFileDialog
                 {
-                    Filter = "工作流文件 (*.wfd)|*.wfd|所有文件 (*.*)|*.*",
+                    Filter = "工作流文件 (*.wfd)|*.wfd|JSON文件 (*.json)|*.json|所有文件 (*.*)|*.*",
                     Title = "打开工作流文件"
                 };
 
@@ -176,16 +301,19 @@ namespace WorkflowDesigner.UI.ViewModels
                     var json = System.IO.File.ReadAllText(openFileDialog.FileName);
                     var workflow = JsonConvert.DeserializeObject<WorkflowDefinition>(json);
 
-                    await DesignerViewModel.LoadWorkflowAsync(workflow);
+                    if (DesignerViewModel != null)
+                    {
+                        await DesignerViewModel.LoadWorkflowAsync(workflow);
+                    }
+
                     CurrentWorkflow = workflow;
                     StatusMessage = $"已打开工作流: {workflow.Name}";
-                    OutputPanelViewModel.AddMessage($"已打开工作流: {workflow.Name}");
+                    OutputPanelViewModel?.AddMessage($"已打开工作流: {workflow.Name}");
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"打开工作流失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
-                OutputPanelViewModel.AddMessage($"打开工作流失败: {ex.Message}");
+                HandleCommandException("打开工作流", ex);
             }
         }
 
@@ -199,18 +327,34 @@ namespace WorkflowDesigner.UI.ViewModels
                     return;
                 }
 
+                if (DesignerViewModel == null)
+                {
+                    throw new InvalidOperationException("设计器不可用");
+                }
+
                 var workflow = DesignerViewModel.BuildWorkflowDefinition();
                 workflow.Id = CurrentWorkflow.Id;
                 workflow.Name = CurrentWorkflow.Name;
 
-                await _workflowRepository.UpdateWorkflowDefinitionAsync(workflow);
-                StatusMessage = $"已保存工作流: {workflow.Name}";
-                OutputPanelViewModel.AddMessage($"已保存工作流: {workflow.Name}");
+                if (_workflowRepository != null)
+                {
+                    await _workflowRepository.UpdateWorkflowDefinitionAsync(workflow);
+                    StatusMessage = $"已保存工作流到数据库: {workflow.Name}";
+                }
+                else
+                {
+                    // 如果没有数据库连接，保存到文件
+                    var json = JsonConvert.SerializeObject(workflow, Formatting.Indented);
+                    var fileName = $"{workflow.Name}_{DateTime.Now:yyyyMMdd_HHmmss}.json";
+                    System.IO.File.WriteAllText(fileName, json);
+                    StatusMessage = $"已保存工作流到文件: {fileName}";
+                }
+
+                OutputPanelViewModel?.AddMessage($"已保存工作流: {workflow.Name}");
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"保存工作流失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
-                OutputPanelViewModel.AddMessage($"保存工作流失败: {ex.Message}");
+                HandleCommandException("保存工作流", ex);
             }
         }
 
@@ -220,74 +364,136 @@ namespace WorkflowDesigner.UI.ViewModels
             {
                 var saveFileDialog = new SaveFileDialog
                 {
-                    Filter = "工作流文件 (*.wfd)|*.wfd|所有文件 (*.*)|*.*",
-                    Title = "保存工作流文件"
+                    Filter = "工作流文件 (*.wfd)|*.wfd|JSON文件 (*.json)|*.json|所有文件 (*.*)|*.*",
+                    Title = "保存工作流文件",
+                    DefaultExt = "json"
                 };
 
                 if (saveFileDialog.ShowDialog() == true)
                 {
+                    if (DesignerViewModel == null)
+                    {
+                        throw new InvalidOperationException("设计器不可用");
+                    }
+
                     var workflow = DesignerViewModel.BuildWorkflowDefinition();
                     workflow.Name = System.IO.Path.GetFileNameWithoutExtension(saveFileDialog.FileName);
 
-                    await _workflowRepository.SaveWorkflowDefinitionAsync(workflow);
+                    // 保存到数据库（如果可用）
+                    if (_workflowRepository != null)
+                    {
+                        try
+                        {
+                            await _workflowRepository.SaveWorkflowDefinitionAsync(workflow);
+                        }
+                        catch (Exception dbEx)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"保存到数据库失败: {dbEx.Message}");
+                            // 继续保存到文件
+                        }
+                    }
 
+                    // 保存到文件
                     var json = JsonConvert.SerializeObject(workflow, Formatting.Indented);
                     System.IO.File.WriteAllText(saveFileDialog.FileName, json);
 
                     CurrentWorkflow = workflow;
                     StatusMessage = $"已保存工作流: {workflow.Name}";
-                    OutputPanelViewModel.AddMessage($"已保存工作流: {workflow.Name}");
+                    OutputPanelViewModel?.AddMessage($"已保存工作流: {workflow.Name}");
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"保存工作流失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
-                OutputPanelViewModel.AddMessage($"保存工作流失败: {ex.Message}");
+                HandleCommandException("另存工作流", ex);
             }
         }
 
         private void OnExit()
         {
-            if (CheckForUnsavedChanges())
+            try
             {
-                Application.Current.Shutdown();
+                if (CheckForUnsavedChanges())
+                {
+                    Application.Current.Shutdown();
+                }
+            }
+            catch (Exception ex)
+            {
+                HandleCommandException("退出应用程序", ex);
             }
         }
 
         private void OnUndo()
         {
-            DesignerViewModel.Undo();
+            try
+            {
+                DesignerViewModel?.Undo();
+                StatusMessage = "已撤销操作";
+            }
+            catch (Exception ex)
+            {
+                HandleCommandException("撤销操作", ex);
+            }
         }
 
         private void OnRedo()
         {
-            DesignerViewModel.Redo();
+            try
+            {
+                DesignerViewModel?.Redo();
+                StatusMessage = "已重做操作";
+            }
+            catch (Exception ex)
+            {
+                HandleCommandException("重做操作", ex);
+            }
         }
 
         private void OnDelete()
         {
-            DesignerViewModel.DeleteSelectedNodes();
+            try
+            {
+                DesignerViewModel?.DeleteSelectedNodes();
+                StatusMessage = "已删除选中节点";
+            }
+            catch (Exception ex)
+            {
+                HandleCommandException("删除节点", ex);
+            }
         }
 
         private void OnValidateWorkflow()
         {
-            var validationResult = DesignerViewModel.ValidateWorkflow();
-            if (validationResult.IsValid)
+            try
             {
-                StatusMessage = "工作流验证通过";
-                OutputPanelViewModel.AddMessage("工作流验证通过");
-                MessageBox.Show("工作流验证通过！", "验证结果", MessageBoxButton.OK, MessageBoxImage.Information);
-            }
-            else
-            {
-                StatusMessage = "工作流验证失败";
-                OutputPanelViewModel.AddMessage("工作流验证失败:");
-                foreach (var error in validationResult.Errors)
+                if (DesignerViewModel == null)
                 {
-                    OutputPanelViewModel.AddMessage($"  - {error}");
+                    throw new InvalidOperationException("设计器不可用");
                 }
-                MessageBox.Show($"工作流验证失败:\n{string.Join("\n", validationResult.Errors)}",
-                               "验证结果", MessageBoxButton.OK, MessageBoxImage.Warning);
+
+                var validationResult = DesignerViewModel.ValidateWorkflow();
+                if (validationResult.IsValid)
+                {
+                    StatusMessage = "工作流验证通过";
+                    OutputPanelViewModel?.AddMessage("工作流验证通过");
+                    MessageBox.Show("工作流验证通过！", "验证结果",
+                                   MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                else
+                {
+                    StatusMessage = "工作流验证失败";
+                    OutputPanelViewModel?.AddMessage("工作流验证失败:");
+                    foreach (var error in validationResult.Errors)
+                    {
+                        OutputPanelViewModel?.AddMessage($"  - {error}");
+                    }
+                    MessageBox.Show($"工作流验证失败:\n{string.Join("\n", validationResult.Errors)}",
+                                   "验证结果", MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
+            }
+            catch (Exception ex)
+            {
+                HandleCommandException("验证工作流", ex);
             }
         }
 
@@ -295,6 +501,11 @@ namespace WorkflowDesigner.UI.ViewModels
         {
             try
             {
+                if (DesignerViewModel == null)
+                {
+                    throw new InvalidOperationException("设计器不可用");
+                }
+
                 var workflow = DesignerViewModel.BuildWorkflowDefinition();
                 var validationResult = DesignerViewModel.ValidateWorkflow();
 
@@ -305,79 +516,98 @@ namespace WorkflowDesigner.UI.ViewModels
                     return;
                 }
 
+                if (_workflowEngine == null)
+                {
+                    MessageBox.Show("工作流引擎不可用，无法启动工作流。\n可能是数据库连接问题。",
+                                   "启动失败", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
                 // 获取启动参数
                 var startDialog = new WorkflowStartDialog();
                 if (startDialog.ShowDialog() == true)
                 {
                     var instanceId = await _workflowEngine.StartWorkflowAsync(workflow, startDialog.InitialData, startDialog.StartedBy);
                     StatusMessage = $"工作流已启动，实例ID: {instanceId}";
-                    OutputPanelViewModel.AddMessage($"工作流已启动，实例ID: {instanceId}");
+                    OutputPanelViewModel?.AddMessage($"工作流已启动，实例ID: {instanceId}");
 
                     // 刷新监控面板
-                    await MonitorViewModel.RefreshAsync();
+                    if (MonitorViewModel != null)
+                    {
+                        await MonitorViewModel.RefreshAsync();
+                    }
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"启动工作流失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
-                OutputPanelViewModel.AddMessage($"启动工作流失败: {ex.Message}");
+                HandleCommandException("启动工作流", ex);
             }
         }
 
         private async void OnPauseWorkflow()
         {
-            if (MonitorViewModel.SelectedWorkflow != null)
+            try
             {
-                try
+                if (MonitorViewModel?.SelectedWorkflow != null && _workflowEngine != null)
                 {
                     await _workflowEngine.PauseWorkflowAsync(MonitorViewModel.SelectedWorkflow.Id);
                     StatusMessage = "工作流已暂停";
-                    OutputPanelViewModel.AddMessage($"工作流已暂停: {MonitorViewModel.SelectedWorkflow.Id}");
+                    OutputPanelViewModel?.AddMessage($"工作流已暂停: {MonitorViewModel.SelectedWorkflow.Id}");
                     await MonitorViewModel.RefreshAsync();
                 }
-                catch (Exception ex)
-                {
-                    MessageBox.Show($"暂停工作流失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
-                }
+            }
+            catch (Exception ex)
+            {
+                HandleCommandException("暂停工作流", ex);
             }
         }
 
         private async void OnStopWorkflow()
         {
-            if (MonitorViewModel.SelectedWorkflow != null)
+            try
             {
-                if (MessageBox.Show("确定要停止此工作流吗？", "确认", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
+                if (MonitorViewModel?.SelectedWorkflow != null && _workflowEngine != null)
                 {
-                    try
+                    if (MessageBox.Show("确定要停止此工作流吗？", "确认",
+                                       MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
                     {
                         await _workflowEngine.TerminateWorkflowAsync(MonitorViewModel.SelectedWorkflow.Id);
                         StatusMessage = "工作流已停止";
-                        OutputPanelViewModel.AddMessage($"工作流已停止: {MonitorViewModel.SelectedWorkflow.Id}");
+                        OutputPanelViewModel?.AddMessage($"工作流已停止: {MonitorViewModel.SelectedWorkflow.Id}");
                         await MonitorViewModel.RefreshAsync();
                     }
-                    catch (Exception ex)
-                    {
-                        MessageBox.Show($"停止工作流失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
-                    }
                 }
+            }
+            catch (Exception ex)
+            {
+                HandleCommandException("停止工作流", ex);
             }
         }
 
         private void OnAbout()
         {
-            MessageBox.Show("工作流可视化设计器 v1.0\n\n基于WPF + NodeNetwork + AvalonDock开发\n适用于企业级工作流设计和执行",
+            MessageBox.Show("工作流可视化设计器 v1.0\n\n基于WPF + NodeNetwork + AvalonDock开发\n适用于企业级工作流设计和执行\n\n" +
+                           $"当前模式: {(_workflowEngine != null ? "完整模式" : "基本模式")}",
                            "关于", MessageBoxButton.OK, MessageBoxImage.Information);
         }
+
+        #endregion
+
+        #region 命令条件
 
         private bool CanSaveWorkflow() => DesignerViewModel?.HasChanges == true;
         private bool CanUndo() => DesignerViewModel?.CanUndo == true;
         private bool CanRedo() => DesignerViewModel?.CanRedo == true;
         private bool CanDelete() => DesignerViewModel?.SelectedNode != null;
         private bool CanValidateWorkflow() => DesignerViewModel?.HasNodes == true;
-        private bool CanStartWorkflow() => DesignerViewModel?.HasNodes == true;
+        private bool CanStartWorkflow() => DesignerViewModel?.HasNodes == true && _workflowEngine != null;
         private bool CanPauseWorkflow() => MonitorViewModel?.SelectedWorkflow?.Status == WorkflowInstanceStatus.Running;
         private bool CanStopWorkflow() => MonitorViewModel?.SelectedWorkflow?.Status == WorkflowInstanceStatus.Running ||
                                          MonitorViewModel?.SelectedWorkflow?.Status == WorkflowInstanceStatus.Paused;
+
+        #endregion
+
+        #region 辅助方法
 
         private bool CheckForUnsavedChanges()
         {
@@ -392,16 +622,37 @@ namespace WorkflowDesigner.UI.ViewModels
 
         private void RaiseCanExecuteChanged()
         {
-            ((DelegateCommand)SaveWorkflowCommand).RaiseCanExecuteChanged();
-            ((DelegateCommand)SaveAsWorkflowCommand).RaiseCanExecuteChanged();
-            ((DelegateCommand)UndoCommand).RaiseCanExecuteChanged();
-            ((DelegateCommand)RedoCommand).RaiseCanExecuteChanged();
-            ((DelegateCommand)DeleteCommand).RaiseCanExecuteChanged();
-            ((DelegateCommand)ValidateWorkflowCommand).RaiseCanExecuteChanged();
-            ((DelegateCommand)StartWorkflowCommand).RaiseCanExecuteChanged();
-            ((DelegateCommand)PauseWorkflowCommand).RaiseCanExecuteChanged();
-            ((DelegateCommand)StopWorkflowCommand).RaiseCanExecuteChanged();
+            try
+            {
+                ((DelegateCommand)SaveWorkflowCommand)?.RaiseCanExecuteChanged();
+                ((DelegateCommand)SaveAsWorkflowCommand)?.RaiseCanExecuteChanged();
+                ((DelegateCommand)UndoCommand)?.RaiseCanExecuteChanged();
+                ((DelegateCommand)RedoCommand)?.RaiseCanExecuteChanged();
+                ((DelegateCommand)DeleteCommand)?.RaiseCanExecuteChanged();
+                ((DelegateCommand)ValidateWorkflowCommand)?.RaiseCanExecuteChanged();
+                ((DelegateCommand)StartWorkflowCommand)?.RaiseCanExecuteChanged();
+                ((DelegateCommand)PauseWorkflowCommand)?.RaiseCanExecuteChanged();
+                ((DelegateCommand)StopWorkflowCommand)?.RaiseCanExecuteChanged();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"更新命令状态失败: {ex.Message}");
+            }
         }
+
+        private void HandleCommandException(string commandName, Exception ex)
+        {
+            var message = $"{commandName}失败: {ex.Message}";
+            StatusMessage = message;
+            OutputPanelViewModel?.AddMessage(message);
+
+            // 对于严重错误，显示消息框
+            if (ex is InvalidOperationException || ex is System.IO.IOException)
+            {
+                MessageBox.Show(message, "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        #endregion
     }
 }
-

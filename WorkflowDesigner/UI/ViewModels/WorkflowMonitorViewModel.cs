@@ -21,6 +21,10 @@ namespace WorkflowDesigner.UI.ViewModels
         private string _searchText = "";
         private string _statusFilter = "All";
 
+        public WorkflowMonitorViewModel()
+        {
+            
+        }
         public WorkflowMonitorViewModel(IWorkflowEngine workflowEngine)
         {
             _workflowEngine = workflowEngine;

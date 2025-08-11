@@ -15,6 +15,7 @@
             <converters:TimeSpanToStringConverter x:Key="TimeSpanToStringConverter"/>
             <converters:NumberFormatConverter x:Key="NumberFormatConverter"/>
             <converters:EnumToStringConverter x:Key="EnumToStringConverter"/>
+            <converters:ColorStringToBrushConverter x:Key="ColorStringToBrushConverter"/>
 
             <!-- 全局样式 -->
             <Style TargetType="Window">
