@@ -1,0 +1,165 @@
+﻿<UserControl x:Class="WorkflowDesigner.UI.Views.PropertyPanelView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="10" IsEnabled="{Binding IsNodeSelected}">
+
+            <!-- 基本属性 -->
+            <GroupBox Header="基本属性" Margin="0,0,0,10">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="80"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="节点名称:" VerticalAlignment="Center" Margin="0,5"/>
+                    <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding SelectedNode.NodeName, UpdateSourceTrigger=PropertyChanged}" Margin="0,5"/>
+
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="描述:" VerticalAlignment="Top" Margin="0,5"/>
+                    <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding SelectedNode.Description, UpdateSourceTrigger=PropertyChanged}" 
+                             AcceptsReturn="True" Height="60" Margin="0,5" TextWrapping="Wrap"/>
+
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="执行人:" VerticalAlignment="Center" Margin="0,5"/>
+                    <ComboBox Grid.Row="2" Grid.Column="1" ItemsSource="{Binding AvailableUsers}" 
+                              SelectedValue="{Binding SelectedNode.ExecutorId}" DisplayMemberPath="Name" 
+                              SelectedValuePath="Id" Margin="0,5"/>
+
+                    <TextBlock Grid.Row="3" Grid.Column="0" Text="执行角色:" VerticalAlignment="Center" Margin="0,5"/>
+                    <ComboBox Grid.Row="3" Grid.Column="1" ItemsSource="{Binding AvailableRoles}" 
+                              SelectedItem="{Binding SelectedNode.ExecutorRole}" Margin="0,5"/>
+
+                    <TextBlock Grid.Row="4" Grid.Column="0" Text="超时时间:" VerticalAlignment="Center" Margin="0,5"/>
+                    <TextBox Grid.Row="4" Grid.Column="1" Text="{Binding SelectedNode.TimeoutDuration}" Margin="0,5"/>
+                </Grid>
+            </GroupBox>
+
+            <!-- 审批节点特定属性 -->
+            <GroupBox Header="审批属性" Margin="0,0,0,10" Visibility="{Binding IsApprovalNode, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="80"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="审批标题:" VerticalAlignment="Center" Margin="0,5"/>
+                    <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding SelectedNode.ApprovalTitle, UpdateSourceTrigger=PropertyChanged}" Margin="0,5"/>
+
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="审批内容:" VerticalAlignment="Top" Margin="0,5"/>
+                    <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding SelectedNode.ApprovalContent, UpdateSourceTrigger=PropertyChanged}" 
+                             AcceptsReturn="True" Height="80" Margin="0,5" TextWrapping="Wrap"/>
+
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="审批人:" VerticalAlignment="Top" Margin="0,5"/>
+                    <ListBox Grid.Row="2" Grid.Column="1" ItemsSource="{Binding AvailableUsers}" Height="100" Margin="0,5"
+                             SelectionMode="Multiple">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <CheckBox Content="{Binding Name}" IsChecked="{Binding IsSelected}"/>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+
+                    <CheckBox Grid.Row="3" Grid.Column="1" Content="需要所有人同意" 
+                              IsChecked="{Binding SelectedNode.RequireAllApproval}" Margin="0,5"/>
+                </Grid>
+            </GroupBox>
+
+            <!-- 判断节点特定属性 -->
+            <GroupBox Header="判断属性" Margin="0,0,0,10" Visibility="{Binding IsDecisionNode, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="80"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="条件表达式:" VerticalAlignment="Top" Margin="0,5"/>
+                    <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding SelectedNode.ConditionExpression, UpdateSourceTrigger=PropertyChanged}" 
+                             AcceptsReturn="True" Height="60" Margin="0,5" TextWrapping="Wrap"/>
+
+                    <TextBlock Grid.Row="1" Grid.Column="1" Text="示例: {Amount} > 1000" 
+                               FontStyle="Italic" Foreground="Gray" Margin="0,0,0,5"/>
+                </Grid>
+            </GroupBox>
+
+            <!-- 任务节点特定属性 -->
+            <GroupBox Header="任务属性" Margin="0,0,0,10" Visibility="{Binding IsTaskNode, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="80"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="任务名称:" VerticalAlignment="Center" Margin="0,5"/>
+                    <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding SelectedNode.TaskName, UpdateSourceTrigger=PropertyChanged}" Margin="0,5"/>
+
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="任务类型:" VerticalAlignment="Center" Margin="0,5"/>
+                    <ComboBox Grid.Row="1" Grid.Column="1" ItemsSource="{Binding TaskTypes}" 
+                              SelectedItem="{Binding SelectedNode.TaskType}" Margin="0,5"/>
+
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="任务描述:" VerticalAlignment="Top" Margin="0,5"/>
+                    <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding SelectedNode.TaskDescription, UpdateSourceTrigger=PropertyChanged}" 
+                             AcceptsReturn="True" Height="60" Margin="0,5" TextWrapping="Wrap"/>
+                </Grid>
+            </GroupBox>
+
+            <!-- 通知节点特定属性 -->
+            <GroupBox Header="通知属性" Margin="0,0,0,10" Visibility="{Binding IsNotificationNode, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="80"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="通知标题:" VerticalAlignment="Center" Margin="0,5"/>
+                    <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding SelectedNode.NotificationTitle, UpdateSourceTrigger=PropertyChanged}" Margin="0,5"/>
+
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="通知内容:" VerticalAlignment="Top" Margin="0,5"/>
+                    <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding SelectedNode.NotificationContent, UpdateSourceTrigger=PropertyChanged}" 
+                             AcceptsReturn="True" Height="80" Margin="0,5" TextWrapping="Wrap"/>
+
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="通知类型:" VerticalAlignment="Center" Margin="0,5"/>
+                    <ComboBox Grid.Row="2" Grid.Column="1" ItemsSource="{Binding NotificationTypes}" 
+                              SelectedItem="{Binding SelectedNode.NotificationType}" Margin="0,5"/>
+
+                    <TextBlock Grid.Row="3" Grid.Column="0" Text="接收人:" VerticalAlignment="Top" Margin="0,5"/>
+                    <ListBox Grid.Row="3" Grid.Column="1" ItemsSource="{Binding AvailableUsers}" Height="100" Margin="0,5"
+                             SelectionMode="Multiple">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <CheckBox Content="{Binding Name}" IsChecked="{Binding IsSelected}"/>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </Grid>
+            </GroupBox>
+
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

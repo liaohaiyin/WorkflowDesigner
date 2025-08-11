@@ -1,0 +1,260 @@
+﻿<Window x:Class="WorkflowDesigner.UI.Views.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:dock="https://github.com/Dirkster99/AvalonDock"
+        xmlns:local="clr-namespace:WorkflowDesigner.UI.Views"
+        mc:Ignorable="d"
+        Title="工作流可视化设计器" Height="800" Width="1200"
+        WindowState="Maximized">
+
+    <Window.Resources>
+        <!-- AvalonDock样式资源 --><!--
+        <Style TargetType="{x:Type dock:LayoutAnchorableTabItem}">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type dock:LayoutAnchorableTabItem}">
+                        <Border Background="{TemplateBinding Background}" 
+                                BorderBrush="{TemplateBinding BorderBrush}" 
+                                BorderThickness="{TemplateBinding BorderThickness}">
+                            <ContentPresenter x:Name="Content" 
+                                            Content="{TemplateBinding Content}"
+                                            ContentTemplate="{TemplateBinding ContentTemplate}"
+                                            ContentStringFormat="{TemplateBinding ContentStringFormat}"
+                                            HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                            VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>-->
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- 菜单栏 -->
+        <Menu Grid.Row="0">
+            <MenuItem Header="文件(_F)">
+                <MenuItem Header="新建(_N)" Command="{Binding NewWorkflowCommand}" InputGestureText="Ctrl+N">
+                    <MenuItem.Icon>
+                        <TextBlock Text="📄" FontSize="14"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="打开(_O)" Command="{Binding OpenWorkflowCommand}" InputGestureText="Ctrl+O">
+                    <MenuItem.Icon>
+                        <TextBlock Text="📂" FontSize="14"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="保存(_S)" Command="{Binding SaveWorkflowCommand}" InputGestureText="Ctrl+S">
+                    <MenuItem.Icon>
+                        <TextBlock Text="💾" FontSize="14"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+                <Separator/>
+                <MenuItem Header="退出(_X)" Command="{Binding ExitCommand}"/>
+            </MenuItem>
+            <MenuItem Header="编辑(_E)">
+                <MenuItem Header="撤销(_U)" Command="{Binding UndoCommand}" InputGestureText="Ctrl+Z"/>
+                <MenuItem Header="重做(_R)" Command="{Binding RedoCommand}" InputGestureText="Ctrl+Y"/>
+                <Separator/>
+                <MenuItem Header="删除(_D)" Command="{Binding DeleteCommand}" InputGestureText="Delete"/>
+            </MenuItem>
+            <MenuItem Header="工作流(_W)">
+                <MenuItem Header="验证(_V)" Command="{Binding ValidateWorkflowCommand}"/>
+                <MenuItem Header="启动(_S)" Command="{Binding StartWorkflowCommand}"/>
+                <MenuItem Header="暂停(_P)" Command="{Binding PauseWorkflowCommand}"/>
+                <MenuItem Header="停止(_T)" Command="{Binding StopWorkflowCommand}"/>
+            </MenuItem>
+            <MenuItem Header="视图(_V)">
+                <MenuItem Header="工具箱(_T)" IsCheckable="True" IsChecked="{Binding IsToolboxVisible}"/>
+                <MenuItem Header="属性(_P)" IsCheckable="True" IsChecked="{Binding IsPropertyPanelVisible}"/>
+                <MenuItem Header="输出(_O)" IsCheckable="True" IsChecked="{Binding IsOutputPanelVisible}"/>
+                <MenuItem Header="监控(_M)" IsCheckable="True" IsChecked="{Binding IsMonitorPanelVisible}"/>
+            </MenuItem>
+        </Menu>
+
+        <!-- 工具栏 -->
+        <ToolBar Grid.Row="0" VerticalAlignment="Bottom">
+            <Button Command="{Binding NewWorkflowCommand}" ToolTip="新建工作流">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="📄" FontSize="14" Margin="0,0,4,0"/>
+                    <TextBlock Text="新建"/>
+                </StackPanel>
+            </Button>
+            <Button Command="{Binding SaveWorkflowCommand}" ToolTip="保存工作流">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="💾" FontSize="14" Margin="0,0,4,0"/>
+                    <TextBlock Text="保存"/>
+                </StackPanel>
+            </Button>
+            <Separator/>
+            <Button Command="{Binding StartWorkflowCommand}" ToolTip="启动工作流">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="▶" FontSize="14" Margin="0,0,4,0" Foreground="Green"/>
+                    <TextBlock Text="启动"/>
+                </StackPanel>
+            </Button>
+            <Button Command="{Binding ValidateWorkflowCommand}" ToolTip="验证工作流">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="✓" FontSize="14" Margin="0,0,4,0" Foreground="Blue"/>
+                    <TextBlock Text="验证"/>
+                </StackPanel>
+            </Button>
+        </ToolBar>
+
+        <!-- 修复后的AvalonDock布局 -->
+        <dock:DockingManager Grid.Row="1" x:Name="dockingManager"
+                            AllowMixedOrientation="True"
+                            BorderBrush="LightGray" BorderThickness="1">
+
+            <!-- 设置主题 -->
+            <dock:DockingManager.Theme>
+                <dock:GenericTheme/>
+            </dock:DockingManager.Theme>
+
+            <!-- 文档头部模板 -->
+            <dock:DockingManager.DocumentHeaderTemplate>
+                <DataTemplate>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="{Binding Title}" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </DataTemplate>
+            </dock:DockingManager.DocumentHeaderTemplate>
+
+            <!-- 锚定窗格头部模板 -->
+            <dock:DockingManager.AnchorableHeaderTemplate>
+                <DataTemplate>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="{Binding Title}" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </DataTemplate>
+            </dock:DockingManager.AnchorableHeaderTemplate>
+
+            <!-- 布局根节点 -->
+            <dock:LayoutRoot x:Name="layoutRoot">
+                <dock:LayoutPanel Orientation="Horizontal">
+
+                    <!-- 左侧工具箱面板 -->
+                    <dock:LayoutAnchorablePane x:Name="leftPane" DockWidth="250">
+                        <dock:LayoutAnchorable x:Name="toolboxAnchorable"
+                                             Title="🔧 工具箱" 
+                                             ContentId="toolbox" 
+                                             CanClose="False" 
+                                             CanFloat="True" 
+                                             CanHide="True"
+                                             CanAutoHide="True">
+                            <local:ToolboxView x:Name="toolboxView" 
+                                             DataContext="{Binding ToolboxViewModel}"/>
+                        </dock:LayoutAnchorable>
+                    </dock:LayoutAnchorablePane>
+
+                    <!-- 中央区域 -->
+                    <dock:LayoutPanel Orientation="Vertical">
+
+                        <!-- 上部：设计器文档区域 -->
+                        <dock:LayoutDocumentPane x:Name="documentPane">
+                            <dock:LayoutDocument x:Name="designerDocument"
+                                               Title="⚙ 工作流设计器" 
+                                               ContentId="designer" 
+                                               CanClose="False"
+                                               CanFloat="False">
+                                <local:WorkflowDesignerView x:Name="designerView"
+                                                          DataContext="{Binding DesignerViewModel}"/>
+                            </dock:LayoutDocument>
+                        </dock:LayoutDocumentPane>
+
+                        <!-- 下部：输出面板 -->
+                        <dock:LayoutAnchorablePane x:Name="bottomPane" DockHeight="200">
+                            <dock:LayoutAnchorable x:Name="outputAnchorable"
+                                                 Title="📝 输出" 
+                                                 ContentId="output" 
+                                                 CanClose="False" 
+                                                 CanFloat="True" 
+                                                 CanHide="True"
+                                                 CanAutoHide="True">
+                                <local:OutputPanelView x:Name="outputView"
+                                                     DataContext="{Binding OutputPanelViewModel}"/>
+                            </dock:LayoutAnchorable>
+                        </dock:LayoutAnchorablePane>
+
+                    </dock:LayoutPanel>
+
+                    <!-- 右侧面板 -->
+                    <dock:LayoutAnchorablePane x:Name="rightPane" DockWidth="300">
+
+                        <!-- 属性面板 -->
+                        <dock:LayoutAnchorable x:Name="propertyAnchorable"
+                                             Title="🔧 属性" 
+                                             ContentId="properties" 
+                                             CanClose="False" 
+                                             CanFloat="True" 
+                                             CanHide="True"
+                                             CanAutoHide="True">
+                            <local:PropertyPanelView x:Name="propertyView"
+                                                   DataContext="{Binding PropertyPanelViewModel}"/>
+                        </dock:LayoutAnchorable>
+
+                        <!-- 工作流监控面板 -->
+                        <dock:LayoutAnchorable x:Name="monitorAnchorable"
+                                             Title="📊 监控" 
+                                             ContentId="monitor" 
+                                             CanClose="False" 
+                                             CanFloat="True" 
+                                             CanHide="True"
+                                             CanAutoHide="True">
+                            <local:WorkflowMonitorView x:Name="monitorView"
+                                                     DataContext="{Binding MonitorViewModel}"/>
+                        </dock:LayoutAnchorable>
+
+                    </dock:LayoutAnchorablePane>
+
+                </dock:LayoutPanel>
+            </dock:LayoutRoot>
+        </dock:DockingManager>
+
+        <!-- 状态栏 -->
+        <StatusBar Grid.Row="2" Background="#F0F0F0" BorderBrush="#E0E0E0" BorderThickness="0,1,0,0">
+            <StatusBar.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                    </Grid>
+                </ItemsPanelTemplate>
+            </StatusBar.ItemsPanel>
+
+            <StatusBarItem Grid.Column="0">
+                <TextBlock Text="{Binding StatusMessage}" Margin="10,0"/>
+            </StatusBarItem>
+
+            <StatusBarItem Grid.Column="1">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="节点: " Foreground="Gray"/>
+                    <TextBlock Text="0" FontWeight="SemiBold"/>
+                </StackPanel>
+            </StatusBarItem>
+
+            <StatusBarItem Grid.Column="2">
+                <StackPanel Orientation="Horizontal" Margin="10,0">
+                    <TextBlock Text="连接: " Foreground="Gray"/>
+                    <TextBlock Text="0" FontWeight="SemiBold"/>
+                </StackPanel>
+            </StatusBarItem>
+
+            <StatusBarItem Grid.Column="3">
+                <TextBlock Text="{Binding CurrentTime, StringFormat='yyyy-MM-dd HH:mm:ss'}" 
+                           Margin="10,0" FontFamily="Consolas" FontSize="11"/>
+            </StatusBarItem>
+        </StatusBar>
+    </Grid>
+</Window>

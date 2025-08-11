@@ -1,0 +1,331 @@
+﻿<UserControl x:Class="WorkflowDesigner.UI.Views.WorkflowMonitorView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignHeight="400" d:DesignWidth="600"
+             Background="#FFFFFF"
+             xmlns:local ="clr-namespace:WorkflowDesigner.UI.Views">
+
+    <UserControl.Resources>
+        <!-- 状态到颜色的转换器 -->
+        <local:WorkflowStatusToColorConverter x:Key="StatusToColorConverter"/>
+        <local:WorkflowStatusToTextConverter x:Key="StatusToTextConverter"/>
+
+        <!-- 数据网格样式 -->
+        <Style x:Key="DataGridRowStyle" TargetType="DataGridRow">
+            <Setter Property="Height" Value="35"/>
+            <Setter Property="BorderThickness" Value="0,0,0,1"/>
+            <Setter Property="BorderBrush" Value="#E0E0E0"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#F5F5F5"/>
+                </Trigger>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="#E3F2FD"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- 状态指示器样式 -->
+        <Style x:Key="StatusIndicatorStyle" TargetType="Ellipse">
+            <Setter Property="Width" Value="12"/>
+            <Setter Property="Height" Value="12"/>
+            <Setter Property="Margin" Value="5,0"/>
+        </Style>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="200"/>
+        </Grid.RowDefinitions>
+
+        <!-- 工具栏 -->
+        <Border Grid.Row="0" Background="#F8F9FA" BorderBrush="#E0E0E0" 
+                BorderThickness="0,0,0,1" Padding="10,8">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- 标题和搜索 -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal">
+                    <TextBlock Text="工作流监控" FontSize="16" FontWeight="Bold" 
+                               VerticalAlignment="Center" Margin="0,0,20,0"/>
+
+                    <TextBlock Text="搜索:" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                    <TextBox x:Name="SearchTextBox" Width="200" Padding="5,3"
+                             Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                             ToolTip="搜索工作流名称或实例ID"/>
+
+                    <ComboBox x:Name="StatusFilterComboBox" Width="120" Margin="10,0,0,0"
+                              SelectedValue="{Binding StatusFilter}">
+                        <ComboBoxItem Content="全部状态" Tag="All"/>
+                        <ComboBoxItem Content="运行中" Tag="Running"/>
+                        <ComboBoxItem Content="已暂停" Tag="Paused"/>
+                        <ComboBoxItem Content="已完成" Tag="Completed"/>
+                        <ComboBoxItem Content="失败" Tag="Failed"/>
+                        <ComboBoxItem Content="已终止" Tag="Terminated"/>
+                    </ComboBox>
+                </StackPanel>
+
+                <!-- 操作按钮 -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <Button x:Name="RefreshButton" 
+                            Click="RefreshButton_Click" Padding="10,5" Margin="2"
+                            ToolTip="手动刷新工作流列表">
+                        <Button.Content>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="🔄" Margin="0,0,5,0"/>
+                                <TextBlock Text="刷新"/>
+                            </StackPanel>
+                        </Button.Content>
+                    </Button>
+
+                    <ToggleButton x:Name="AutoRefreshToggle" Content="自动刷新" 
+                                  IsChecked="{Binding AutoRefreshEnabled}" 
+                                  Padding="10,5" Margin="2"
+                                  ToolTip="启用/禁用自动刷新"/>
+
+                    <Button Content="导出" x:Name="ExportButton" 
+                            Click="ExportButton_Click" Padding="10,5" Margin="2"
+                            ToolTip="导出工作流数据"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- 工作流列表 -->
+        <DataGrid Grid.Row="1" x:Name="WorkflowDataGrid"
+                  ItemsSource="{Binding FilteredWorkflows}" 
+                  SelectedItem="{Binding SelectedWorkflow}"
+                  AutoGenerateColumns="False" IsReadOnly="True"
+                  GridLinesVisibility="None" HeadersVisibility="Column"
+                  RowStyle="{StaticResource DataGridRowStyle}"
+                  SelectionMode="Single" CanUserResizeRows="False">
+
+            <DataGrid.Columns>
+                <!-- 状态指示器 -->
+                <DataGridTemplateColumn Header="状态" Width="80" CanUserResize="False">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                <Ellipse Style="{StaticResource StatusIndicatorStyle}"
+                                         Fill="{Binding Status, Converter={StaticResource StatusToColorConverter}}"/>
+                                <TextBlock Text="{Binding Status, Converter={StaticResource StatusToTextConverter}}" 
+                                           VerticalAlignment="Center" FontSize="11"/>
+                            </StackPanel>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+
+                <!-- 实例ID -->
+                <DataGridTextColumn Header="实例ID" Binding="{Binding Id}" Width="120">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="FontFamily" Value="Consolas"/>
+                            <Setter Property="FontSize" Value="11"/>
+                            <Setter Property="ToolTip" Value="{Binding Id}"/>
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+
+                <!-- 工作流名称 -->
+                <DataGridTextColumn Header="工作流名称" Binding="{Binding Definition.Name}" Width="150">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="FontWeight" Value="SemiBold"/>
+                            <Setter Property="ToolTip" Value="{Binding Definition.Description}"/>
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+
+                <!-- 当前节点 -->
+                <DataGridTextColumn Header="当前节点" Binding="{Binding CurrentNodeId}" Width="120">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="FontFamily" Value="Consolas"/>
+                            <Setter Property="FontSize" Value="11"/>
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+
+                <!-- 启动时间 -->
+                <DataGridTextColumn Header="启动时间" Binding="{Binding StartTime, StringFormat='yyyy-MM-dd HH:mm:ss'}" Width="140"/>
+
+                <!-- 运行时长 -->
+                <DataGridTemplateColumn Header="运行时长" Width="100">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Duration}" 
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                                       FontFamily="Consolas" FontSize="11"/>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+
+                <!-- 启动人 -->
+                <DataGridTextColumn Header="启动人" Binding="{Binding StartedBy}" Width="100"/>
+
+                <!-- 操作按钮 -->
+                <DataGridTemplateColumn Header="操作" Width="200" CanUserResize="False">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                <Button Content="查看" Click="ViewDetailsButton_Click" 
+                                        Padding="5,2" Margin="1" FontSize="11"
+                                        Background="#2196F3" Foreground="White" BorderThickness="0"/>
+                                <Button Content="暂停" Click="PauseButton_Click" 
+                                        Padding="5,2" Margin="1" FontSize="11"
+                                        Background="#FF9800" Foreground="White" BorderThickness="0"
+                                        Visibility="{Binding CanPause, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                                <Button Content="恢复" Click="ResumeButton_Click" 
+                                        Padding="5,2" Margin="1" FontSize="11"
+                                        Background="#4CAF50" Foreground="White" BorderThickness="0"
+                                        Visibility="{Binding CanResume, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                                <Button Content="终止" Click="TerminateButton_Click" 
+                                        Padding="5,2" Margin="1" FontSize="11"
+                                        Background="#F44336" Foreground="White" BorderThickness="0"
+                                        Visibility="{Binding CanTerminate, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                            </StackPanel>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <!-- 分割器 -->
+        <GridSplitter Grid.Row="2" Height="5" HorizontalAlignment="Stretch" 
+                      Background="#E0E0E0" ResizeBehavior="PreviousAndNext"/>
+
+        <!-- 详细信息面板 -->
+        <TabControl Grid.Row="3" Background="#FAFAFA">
+
+            <!-- 基本信息 -->
+            <TabItem Header="基本信息">
+                <Grid Margin="10" DataContext="{Binding SelectedWorkflow}">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- 左列 -->
+                    <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,10,0">
+                        <TextBlock Text="实例信息" FontWeight="Bold" Margin="0,0,0,10"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="80"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="实例ID:" Margin="0,2"/>
+                            <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Id}" FontFamily="Consolas" Margin="5,2"/>
+
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="状态:" Margin="0,2"/>
+                            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Status}" Margin="5,2"/>
+
+                            <TextBlock Grid.Row="2" Grid.Column="0" Text="启动人:" Margin="0,2"/>
+                            <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding StartedBy}" Margin="5,2"/>
+
+                            <TextBlock Grid.Row="3" Grid.Column="0" Text="启动时间:" Margin="0,2"/>
+                            <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding StartTime, StringFormat='yyyy-MM-dd HH:mm:ss'}" Margin="5,2"/>
+                        </Grid>
+                    </StackPanel>
+
+                    <!-- 右列 -->
+                    <StackPanel Grid.Row="0" Grid.Column="1" Margin="10,0,0,0">
+                        <TextBlock Text="工作流信息" FontWeight="Bold" Margin="0,0,0,10"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="80"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="名称:" Margin="0,2"/>
+                            <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Definition.Name}" Margin="5,2"/>
+
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="版本:" Margin="0,2"/>
+                            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Definition.Version}" Margin="5,2"/>
+
+                            <TextBlock Grid.Row="2" Grid.Column="0" Text="类别:" Margin="0,2"/>
+                            <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Definition.Category}" Margin="5,2"/>
+
+                            <TextBlock Grid.Row="3" Grid.Column="0" Text="当前节点:" Margin="0,2"/>
+                            <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding CurrentNodeId}" FontFamily="Consolas" Margin="5,2"/>
+                        </Grid>
+                    </StackPanel>
+
+                    <!-- 错误信息 -->
+                    <StackPanel Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,10,0,0"
+                                Visibility="{Binding HasError, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <TextBlock Text="错误信息" FontWeight="Bold" Foreground="Red" Margin="0,0,0,5"/>
+                        <Border Background="#FFEBEE" BorderBrush="#F44336" BorderThickness="1" Padding="10">
+                            <TextBlock Text="{Binding ErrorMessage}" TextWrapping="Wrap" Foreground="Red"/>
+                        </Border>
+                    </StackPanel>
+                </Grid>
+            </TabItem>
+
+            <!-- 执行历史 -->
+            <TabItem Header="执行历史">
+                <DataGrid ItemsSource="{Binding SelectedWorkflow.NodeExecutions}" 
+                          AutoGenerateColumns="False" IsReadOnly="True"
+                          GridLinesVisibility="None" Margin="10">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="节点ID" Binding="{Binding NodeId}" Width="120"/>
+                        <DataGridTextColumn Header="节点名称" Binding="{Binding NodeName}" Width="150"/>
+                        <DataGridTextColumn Header="状态" Binding="{Binding Status}" Width="80"/>
+                        <DataGridTextColumn Header="开始时间" Binding="{Binding StartTime, StringFormat='yyyy-MM-dd HH:mm:ss'}" Width="140"/>
+                        <DataGridTextColumn Header="结束时间" Binding="{Binding EndTime, StringFormat='yyyy-MM-dd HH:mm:ss'}" Width="140"/>
+                        <DataGridTextColumn Header="执行人" Binding="{Binding ExecutorId}" Width="100"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </TabItem>
+
+            <!-- 工作流数据 -->
+            <TabItem Header="工作流数据">
+                <Grid Margin="10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,10">
+                        <TextBlock Text="工作流数据 (JSON格式)" FontWeight="Bold" VerticalAlignment="Center"/>
+                        <Button Content="格式化" Click="FormatJsonButton_Click" 
+                                Padding="8,4" Margin="10,0,0,0"/>
+                        <Button Content="复制" Click="CopyJsonButton_Click" 
+                                Padding="8,4" Margin="5,0,0,0"/>
+                    </StackPanel>
+
+                    <TextBox Grid.Row="1" x:Name="WorkflowDataTextBox"
+                             Text="{Binding SelectedWorkflow.DataJson}" 
+                             IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap"
+                             FontFamily="Consolas" FontSize="11"
+                             VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"/>
+                </Grid>
+            </TabItem>
+        </TabControl>
+    </Grid>
+</UserControl>
