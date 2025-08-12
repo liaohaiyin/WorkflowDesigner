@@ -1,4 +1,5 @@
 ﻿using MySql.Data.EntityFramework;
+using MySql.Data.MySqlClient;
 using System;
 using System.Data.Entity;
 using System.Data.Entity.Infrastructure;
@@ -22,12 +23,14 @@ namespace WorkflowDesigner.Infrastructure.Data
             // 配置Entity Framework使用MySQL
             Configuration.LazyLoadingEnabled = false;
             Configuration.ProxyCreationEnabled = false;
+            Configuration.ValidateOnSaveEnabled = false;
         }
 
         public WorkflowDbContext(string connectionString) : base(connectionString)
         {
             Configuration.LazyLoadingEnabled = false;
             Configuration.ProxyCreationEnabled = false;
+            Configuration.ValidateOnSaveEnabled = false;
         }
 
         public DbSet<WorkflowDefinition> WorkflowDefinitions { get; set; }
@@ -93,8 +96,6 @@ namespace WorkflowDesigner.Infrastructure.Data
                 .Property(e => e.StartedBy).HasMaxLength(100);
             modelBuilder.Entity<WorkflowInstance>()
                 .Property(e => e.ErrorMessage).HasMaxLength(1000);
-            modelBuilder.Entity<WorkflowInstance>()
-                .Property(e => e.Duration).HasMaxLength(50);
 
             // 配置外键关系
             modelBuilder.Entity<WorkflowInstance>()
@@ -174,70 +175,188 @@ namespace WorkflowDesigner.Infrastructure.Data
     {
         protected override void Seed(WorkflowDbContext context)
         {
-            // 创建示例工作流定义
-            var sampleWorkflow = new WorkflowDefinition
-            {
-                Id = Guid.NewGuid().ToString(),
-                Name = "请假审批流程",
-                Description = "员工请假申请审批工作流",
-                Version = "1.0",
-                Category = "人事管理",
-                CreatedBy = "system",
-                CreatedTime = DateTime.Now,
-                IsActive = true,
-                NodesJson = @"[
-                    {
-                        ""NodeId"": ""start_001"",
-                        ""NodeName"": ""开始"",
-                        ""NodeType"": ""Start"",
-                        ""Position"": { ""X"": 100, ""Y"": 100 }
-                    },
-                    {
-                        ""NodeId"": ""approval_001"",
-                        ""NodeName"": ""部门经理审批"",
-                        ""NodeType"": ""Approval"",
-                        ""Position"": { ""X"": 300, ""Y"": 100 },
-                        ""ApprovalTitle"": ""请假申请审批"",
-                        ""ApprovalContent"": ""请审批员工请假申请"",
-                        ""RequireAllApproval"": false
-                    },
-                    {
-                        ""NodeId"": ""end_001"",
-                        ""NodeName"": ""结束"",
-                        ""NodeType"": ""End"",
-                        ""Position"": { ""X"": 500, ""Y"": 100 }
-                    }
-                ]",
-                ConnectionsJson = @"[
-                    {
-                        ""Id"": ""conn_001"",
-                        ""SourceNodeId"": ""start_001"",
-                        ""SourcePortName"": ""输出"",
-                        ""TargetNodeId"": ""approval_001"",
-                        ""TargetPortName"": ""输入""
-                    },
-                    {
-                        ""Id"": ""conn_002"",
-                        ""SourceNodeId"": ""approval_001"",
-                        ""SourcePortName"": ""同意"",
-                        ""TargetNodeId"": ""end_001"",
-                        ""TargetPortName"": ""输入""
-                    }
-                ]",
-                StartNodeId = "start_001"
-            };
-
-            context.WorkflowDefinitions.Add(sampleWorkflow);
-
-            // 创建示例用户数据（如果需要的话）
             try
             {
+                // 检查数据库是否已经有数据
+                if (context.WorkflowDefinitions.Any())
+                {
+                    return; // 数据库已经有数据，不需要重新初始化
+                }
+
+                // 创建示例工作流定义 - 请假审批流程
+                var leaveWorkflow = new WorkflowDefinition
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    Name = "请假审批流程",
+                    Description = "员工请假申请审批工作流，包含部门经理审批环节",
+                    Version = "1.0",
+                    Category = "人事管理",
+                    CreatedBy = "system",
+                    CreatedTime = DateTime.Now,
+                    IsActive = true,
+                    NodesJson = @"[
+                        {
+                            ""NodeId"": ""start_001"",
+                            ""NodeName"": ""开始"",
+                            ""NodeType"": ""Start"",
+                            ""Position"": { ""X"": 100, ""Y"": 100 }
+                        },
+                        {
+                            ""NodeId"": ""approval_001"",
+                            ""NodeName"": ""部门经理审批"",
+                            ""NodeType"": ""Approval"",
+                            ""Position"": { ""X"": 300, ""Y"": 100 },
+                            ""ApprovalTitle"": ""请假申请审批"",
+                            ""ApprovalContent"": ""请审批员工请假申请"",
+                            ""RequireAllApproval"": false,
+                            ""Approvers"": [""1""]
+                        },
+                        {
+                            ""NodeId"": ""notification_001"",
+                            ""NodeName"": ""通知申请人"",
+                            ""NodeType"": ""Notification"",
+                            ""Position"": { ""X"": 500, ""Y"": 100 },
+                            ""NotificationTitle"": ""请假审批结果通知"",
+                            ""NotificationContent"": ""您的请假申请已处理完成"",
+                            ""NotificationType"": ""Email""
+                        },
+                        {
+                            ""NodeId"": ""end_001"",
+                            ""NodeName"": ""结束"",
+                            ""NodeType"": ""End"",
+                            ""Position"": { ""X"": 700, ""Y"": 100 }
+                        }
+                    ]",
+                    ConnectionsJson = @"[
+                        {
+                            ""Id"": ""conn_001"",
+                            ""SourceNodeId"": ""start_001"",
+                            ""SourcePortName"": ""输出"",
+                            ""TargetNodeId"": ""approval_001"",
+                            ""TargetPortName"": ""输入""
+                        },
+                        {
+                            ""Id"": ""conn_002"",
+                            ""SourceNodeId"": ""approval_001"",
+                            ""SourcePortName"": ""同意"",
+                            ""TargetNodeId"": ""notification_001"",
+                            ""TargetPortName"": ""输入""
+                        },
+                        {
+                            ""Id"": ""conn_003"",
+                            ""SourceNodeId"": ""notification_001"",
+                            ""SourcePortName"": ""完成"",
+                            ""TargetNodeId"": ""end_001"",
+                            ""TargetPortName"": ""输入""
+                        }
+                    ]",
+                    StartNodeId = "start_001"
+                };
+
+                // 创建示例工作流定义 - 费用报销流程
+                var expenseWorkflow = new WorkflowDefinition
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    Name = "费用报销流程",
+                    Description = "员工费用报销审批工作流，包含金额判断和多级审批",
+                    Version = "1.0",
+                    Category = "财务管理",
+                    CreatedBy = "system",
+                    CreatedTime = DateTime.Now,
+                    IsActive = true,
+                    NodesJson = @"[
+                        {
+                            ""NodeId"": ""start_002"",
+                            ""NodeName"": ""开始"",
+                            ""NodeType"": ""Start"",
+                            ""Position"": { ""X"": 100, ""Y"": 100 }
+                        },
+                        {
+                            ""NodeId"": ""decision_001"",
+                            ""NodeName"": ""金额判断"",
+                            ""NodeType"": ""Decision"",
+                            ""Position"": { ""X"": 300, ""Y"": 100 },
+                            ""ConditionExpression"": ""{Amount} > 1000""
+                        },
+                        {
+                            ""NodeId"": ""approval_002"",
+                            ""NodeName"": ""部门经理审批"",
+                            ""NodeType"": ""Approval"",
+                            ""Position"": { ""X"": 500, ""Y"": 50 },
+                            ""ApprovalTitle"": ""费用报销审批（小额）"",
+                            ""ApprovalContent"": ""请审批费用报销申请"",
+                            ""RequireAllApproval"": false,
+                            ""Approvers"": [""1""]
+                        },
+                        {
+                            ""NodeId"": ""approval_003"",
+                            ""NodeName"": ""财务总监审批"",
+                            ""NodeType"": ""Approval"",
+                            ""Position"": { ""X"": 500, ""Y"": 150 },
+                            ""ApprovalTitle"": ""费用报销审批（大额）"",
+                            ""ApprovalContent"": ""请审批大额费用报销申请"",
+                            ""RequireAllApproval"": false,
+                            ""Approvers"": [""5""]
+                        },
+                        {
+                            ""NodeId"": ""end_002"",
+                            ""NodeName"": ""结束"",
+                            ""NodeType"": ""End"",
+                            ""Position"": { ""X"": 700, ""Y"": 100 }
+                        }
+                    ]",
+                    ConnectionsJson = @"[
+                        {
+                            ""Id"": ""conn_004"",
+                            ""SourceNodeId"": ""start_002"",
+                            ""SourcePortName"": ""输出"",
+                            ""TargetNodeId"": ""decision_001"",
+                            ""TargetPortName"": ""输入""
+                        },
+                        {
+                            ""Id"": ""conn_005"",
+                            ""SourceNodeId"": ""decision_001"",
+                            ""SourcePortName"": ""否"",
+                            ""TargetNodeId"": ""approval_002"",
+                            ""TargetPortName"": ""输入""
+                        },
+                        {
+                            ""Id"": ""conn_006"",
+                            ""SourceNodeId"": ""decision_001"",
+                            ""SourcePortName"": ""是"",
+                            ""TargetNodeId"": ""approval_003"",
+                            ""TargetPortName"": ""输入""
+                        },
+                        {
+                            ""Id"": ""conn_007"",
+                            ""SourceNodeId"": ""approval_002"",
+                            ""SourcePortName"": ""同意"",
+                            ""TargetNodeId"": ""end_002"",
+                            ""TargetPortName"": ""输入""
+                        },
+                        {
+                            ""Id"": ""conn_008"",
+                            ""SourceNodeId"": ""approval_003"",
+                            ""SourcePortName"": ""同意"",
+                            ""TargetNodeId"": ""end_002"",
+                            ""TargetPortName"": ""输入""
+                        }
+                    ]",
+                    StartNodeId = "start_002"
+                };
+
+                context.WorkflowDefinitions.Add(leaveWorkflow);
+                context.WorkflowDefinitions.Add(expenseWorkflow);
+
                 context.SaveChanges();
+
+                System.Diagnostics.Debug.WriteLine("数据库种子数据创建成功");
             }
             catch (Exception ex)
             {
                 // 记录种子数据创建失败的异常
                 System.Diagnostics.Debug.WriteLine($"种子数据创建失败: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"堆栈跟踪: {ex.StackTrace}");
             }
 
             base.Seed(context);

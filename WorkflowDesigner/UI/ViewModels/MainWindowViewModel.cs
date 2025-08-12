@@ -115,6 +115,13 @@ namespace WorkflowDesigner.UI.ViewModels
             set => SetProperty(ref _currentWorkflow, value);
         }
 
+        private bool _isMonitorPanelVisible = true;
+
+        public bool IsMonitorPanelVisible
+        {
+            get => _isMonitorPanelVisible;
+            set => this.SetProperty(ref _isMonitorPanelVisible, value);
+        }
         #endregion
 
         #region 命令

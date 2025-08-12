@@ -11,182 +11,338 @@ using WorkflowDesigner.Infrastructure.Data;
 namespace WorkflowDesigner.Core.Services
 {
     // 工作流仓储实现
-    public class WorkflowRepository : IWorkflowRepository
+    public class WorkflowRepository : IWorkflowRepository, IDisposable
     {
         private readonly WorkflowDbContext _context;
+        private readonly bool _disposeContext;
 
         public WorkflowRepository(WorkflowDbContext context)
         {
-            _context = context;
+            _context = context ?? throw new ArgumentNullException(nameof(context));
+            _disposeContext = false; // 外部传入的context，不由本类负责释放
+        }
+
+        // 添加一个默认构造函数，用于创建自己的context
+        public WorkflowRepository()
+        {
+            _context = new WorkflowDbContext();
+            _disposeContext = true; // 自己创建的context，需要释放
         }
 
         public async Task<WorkflowDefinition> GetWorkflowDefinitionAsync(string id)
         {
-            return await _context.WorkflowDefinitions.FindAsync(id);
+            try
+            {
+                return await _context.WorkflowDefinitions.FindAsync(id);
+            }
+            catch (Exception ex)
+            {
+                throw new ApplicationException($"获取工作流定义失败: {ex.Message}", ex);
+            }
         }
 
         public async Task<List<WorkflowDefinition>> GetAllWorkflowDefinitionsAsync()
         {
-            return await _context.WorkflowDefinitions.Where(w => w.IsActive).ToListAsync();
+            try
+            {
+                return await _context.WorkflowDefinitions.Where(w => w.IsActive).ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                throw new ApplicationException($"获取所有工作流定义失败: {ex.Message}", ex);
+            }
         }
 
         public async Task SaveWorkflowDefinitionAsync(WorkflowDefinition definition)
         {
-            _context.WorkflowDefinitions.Add(definition);
-            await _context.SaveChangesAsync();
+            try
+            {
+                _context.WorkflowDefinitions.Add(definition);
+                await _context.SaveChangesAsync();
+            }
+            catch (Exception ex)
+            {
+                throw new ApplicationException($"保存工作流定义失败: {ex.Message}", ex);
+            }
         }
 
         public async Task UpdateWorkflowDefinitionAsync(WorkflowDefinition definition)
         {
-            definition.UpdatedTime = DateTime.Now;
-            _context.Entry(definition).State = EntityState.Modified;
-            await _context.SaveChangesAsync();
+            try
+            {
+                definition.UpdatedTime = DateTime.Now;
+                _context.Entry(definition).State = EntityState.Modified;
+                await _context.SaveChangesAsync();
+            }
+            catch (Exception ex)
+            {
+                throw new ApplicationException($"更新工作流定义失败: {ex.Message}", ex);
+            }
         }
 
         public async Task DeleteWorkflowDefinitionAsync(string id)
         {
-            var definition = await _context.WorkflowDefinitions.FindAsync(id);
-            if (definition != null)
+            try
             {
-                definition.IsActive = false;
-                await _context.SaveChangesAsync();
+                var definition = await _context.WorkflowDefinitions.FindAsync(id);
+                if (definition != null)
+                {
+                    definition.IsActive = false;
+                    await _context.SaveChangesAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new ApplicationException($"删除工作流定义失败: {ex.Message}", ex);
             }
         }
 
         public async Task<WorkflowInstance> GetWorkflowInstanceAsync(string id)
         {
-            return await _context.WorkflowInstances
-                .Include(wi => wi.Definition)
-                .Include(wi => wi.NodeExecutions)
-                .FirstOrDefaultAsync(wi => wi.Id == id);
+            try
+            {
+                return await _context.WorkflowInstances
+                    .Include(wi => wi.Definition)
+                    .Include(wi => wi.NodeExecutions)
+                    .FirstOrDefaultAsync(wi => wi.Id == id);
+            }
+            catch (Exception ex)
+            {
+                throw new ApplicationException($"获取工作流实例失败: {ex.Message}", ex);
+            }
         }
 
         public async Task<List<WorkflowInstance>> GetActiveWorkflowsAsync()
         {
-            return await _context.WorkflowInstances
-                .Include(wi => wi.Definition)
-                .Where(wi => wi.Status == WorkflowInstanceStatus.Running || wi.Status == WorkflowInstanceStatus.Paused)
-                .OrderByDescending(wi => wi.StartTime)
-                .ToListAsync();
+            try
+            {
+                return await _context.WorkflowInstances
+                    .Include(wi => wi.Definition)
+                    .Where(wi => wi.Status == WorkflowInstanceStatus.Running || wi.Status == WorkflowInstanceStatus.Paused)
+                    .OrderByDescending(wi => wi.StartTime)
+                    .ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                throw new ApplicationException($"获取活动工作流失败: {ex.Message}", ex);
+            }
         }
 
         public async Task<List<WorkflowInstance>> GetWorkflowsByUserAsync(string userId)
         {
-            return await _context.WorkflowInstances
-                .Include(wi => wi.Definition)
-                .Where(wi => wi.StartedBy == userId)
-                .OrderByDescending(wi => wi.StartTime)
-                .ToListAsync();
+            try
+            {
+                return await _context.WorkflowInstances
+                    .Include(wi => wi.Definition)
+                    .Where(wi => wi.StartedBy == userId)
+                    .OrderByDescending(wi => wi.StartTime)
+                    .ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                throw new ApplicationException($"获取用户工作流失败: {ex.Message}", ex);
+            }
         }
 
         public async Task SaveWorkflowInstanceAsync(WorkflowInstance instance)
         {
-            _context.WorkflowInstances.Add(instance);
-            await _context.SaveChangesAsync();
+            try
+            {
+                _context.WorkflowInstances.Add(instance);
+                await _context.SaveChangesAsync();
+            }
+            catch (Exception ex)
+            {
+                throw new ApplicationException($"保存工作流实例失败: {ex.Message}", ex);
+            }
         }
 
         public async Task UpdateWorkflowInstanceAsync(WorkflowInstance instance)
         {
-            _context.Entry(instance).State = EntityState.Modified;
-            await _context.SaveChangesAsync();
+            try
+            {
+                _context.Entry(instance).State = EntityState.Modified;
+                await _context.SaveChangesAsync();
+            }
+            catch (Exception ex)
+            {
+                throw new ApplicationException($"更新工作流实例失败: {ex.Message}", ex);
+            }
         }
 
         public async Task SaveNodeExecutionAsync(WorkflowNodeExecution execution)
         {
-            _context.WorkflowNodeExecutions.Add(execution);
-            await _context.SaveChangesAsync();
+            try
+            {
+                _context.WorkflowNodeExecutions.Add(execution);
+                await _context.SaveChangesAsync();
+            }
+            catch (Exception ex)
+            {
+                throw new ApplicationException($"保存节点执行记录失败: {ex.Message}", ex);
+            }
         }
 
         public async Task UpdateNodeExecutionAsync(WorkflowNodeExecution execution)
         {
-            _context.Entry(execution).State = EntityState.Modified;
-            await _context.SaveChangesAsync();
+            try
+            {
+                _context.Entry(execution).State = EntityState.Modified;
+                await _context.SaveChangesAsync();
+            }
+            catch (Exception ex)
+            {
+                throw new ApplicationException($"更新节点执行记录失败: {ex.Message}", ex);
+            }
         }
 
         public async Task<List<WorkflowNodeExecution>> GetNodeExecutionsAsync(string instanceId)
         {
-            return await _context.WorkflowNodeExecutions
-                .Where(ne => ne.InstanceId == instanceId)
-                .OrderBy(ne => ne.StartTime)
-                .ToListAsync();
+            try
+            {
+                return await _context.WorkflowNodeExecutions
+                    .Where(ne => ne.InstanceId == instanceId)
+                    .OrderBy(ne => ne.StartTime)
+                    .ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                throw new ApplicationException($"获取节点执行记录失败: {ex.Message}", ex);
+            }
+        }
+
+        public void Dispose()
+        {
+            if (_disposeContext && _context != null)
+            {
+                _context.Dispose();
+            }
         }
     }
 
     // 审批服务实现
-    public class ApprovalService : IApprovalService
+    public class ApprovalService : IApprovalService, IDisposable
     {
         private readonly WorkflowDbContext _context;
+        private readonly bool _disposeContext;
         private static readonly NLog.Logger Logger = NLog.LogManager.GetCurrentClassLogger();
 
         public ApprovalService(WorkflowDbContext context)
         {
-            _context = context;
+            _context = context ?? throw new ArgumentNullException(nameof(context));
+            _disposeContext = false;
+        }
+
+        public ApprovalService()
+        {
+            _context = new WorkflowDbContext();
+            _disposeContext = true;
         }
 
         public async Task SubmitApprovalTasksAsync(List<ApprovalTask> tasks)
         {
-            _context.ApprovalTasks.AddRange(tasks);
-            await _context.SaveChangesAsync();
+            try
+            {
+                _context.ApprovalTasks.AddRange(tasks);
+                await _context.SaveChangesAsync();
 
-            Logger.Info($"提交了 {tasks.Count} 个审批任务");
+                Logger.Info($"提交了 {tasks.Count} 个审批任务");
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex, "提交审批任务失败");
+                throw new ApplicationException($"提交审批任务失败: {ex.Message}", ex);
+            }
         }
 
         public async Task<List<ApprovalResult>> WaitForApprovalResultsAsync(List<string> taskIds, TimeSpan? timeout = null)
         {
-            var results = new List<ApprovalResult>();
-            var startTime = DateTime.Now;
-            var timeoutTime = timeout.HasValue ? startTime.Add(timeout.Value) : DateTime.MaxValue;
-
-            while (results.Count < taskIds.Count && DateTime.Now < timeoutTime)
+            try
             {
-                var completedTasks = await _context.ApprovalTasks
-                    .Where(t => taskIds.Contains(t.Id) && t.Status != ApprovalTaskStatus.Pending)
-                    .ToListAsync();
+                var results = new List<ApprovalResult>();
+                var startTime = DateTime.Now;
+                var timeoutTime = timeout.HasValue ? startTime.Add(timeout.Value) : DateTime.MaxValue;
 
-                foreach (var task in completedTasks)
+                while (results.Count < taskIds.Count && DateTime.Now < timeoutTime)
                 {
-                    if (!results.Any(r => r.TaskId == task.Id))
+                    var completedTasks = await _context.ApprovalTasks
+                        .Where(t => taskIds.Contains(t.Id) && t.Status != ApprovalTaskStatus.Pending)
+                        .ToListAsync();
+
+                    foreach (var task in completedTasks)
                     {
-                        results.Add(new ApprovalResult
+                        if (!results.Any(r => r.TaskId == task.Id))
                         {
-                            TaskId = task.Id,
-                            IsApproved = task.Status == ApprovalTaskStatus.Approved,
-                            Comment = task.ApprovalComment,
-                            ApprovedTime = task.ApprovedTime,
-                            ApproverId = task.ApproverId
-                        });
+                            results.Add(new ApprovalResult
+                            {
+                                TaskId = task.Id,
+                                IsApproved = task.Status == ApprovalTaskStatus.Approved,
+                                Comment = task.ApprovalComment,
+                                ApprovedTime = task.ApprovedTime,
+                                ApproverId = task.ApproverId
+                            });
+                        }
+                    }
+
+                    if (results.Count < taskIds.Count)
+                    {
+                        await Task.Delay(1000); // 等待1秒后重新检查
                     }
                 }
 
-                if (results.Count < taskIds.Count)
-                {
-                    await Task.Delay(1000); // 等待1秒后重新检查
-                }
+                return results;
             }
-
-            return results;
+            catch (Exception ex)
+            {
+                Logger.Error(ex, "等待审批结果失败");
+                throw new ApplicationException($"等待审批结果失败: {ex.Message}", ex);
+            }
         }
 
         public async Task<List<ApprovalTask>> GetPendingApprovalsAsync(string userId)
         {
-            return await _context.ApprovalTasks
-                .Where(t => t.ApproverId == userId && t.Status == ApprovalTaskStatus.Pending)
-                .OrderBy(t => t.CreatedTime)
-                .ToListAsync();
+            try
+            {
+                return await _context.ApprovalTasks
+                    .Where(t => t.ApproverId == userId && t.Status == ApprovalTaskStatus.Pending)
+                    .OrderBy(t => t.CreatedTime)
+                    .ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex, "获取待审批任务失败");
+                throw new ApplicationException($"获取待审批任务失败: {ex.Message}", ex);
+            }
         }
 
         public async Task ApproveTaskAsync(string taskId, string userId, bool isApproved, string comment)
         {
-            var task = await _context.ApprovalTasks.FindAsync(taskId);
-            if (task != null && task.ApproverId == userId && task.Status == ApprovalTaskStatus.Pending)
+            try
             {
-                task.Status = isApproved ? ApprovalTaskStatus.Approved : ApprovalTaskStatus.Rejected;
-                task.IsApproved = isApproved;
-                task.ApprovalComment = comment;
-                task.ApprovedTime = DateTime.Now;
+                var task = await _context.ApprovalTasks.FindAsync(taskId);
+                if (task != null && task.ApproverId == userId && task.Status == ApprovalTaskStatus.Pending)
+                {
+                    task.Status = isApproved ? ApprovalTaskStatus.Approved : ApprovalTaskStatus.Rejected;
+                    task.IsApproved = isApproved;
+                    task.ApprovalComment = comment;
+                    task.ApprovedTime = DateTime.Now;
 
-                await _context.SaveChangesAsync();
-                Logger.Info($"用户 {userId} {(isApproved ? "同意" : "拒绝")} 了审批任务 {taskId}");
+                    await _context.SaveChangesAsync();
+                    Logger.Info($"用户 {userId} {(isApproved ? "同意" : "拒绝")} 了审批任务 {taskId}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex, "审批任务处理失败");
+                throw new ApplicationException($"审批任务处理失败: {ex.Message}", ex);
+            }
+        }
+
+        public void Dispose()
+        {
+            if (_disposeContext && _context != null)
+            {
+                _context.Dispose();
             }
         }
     }

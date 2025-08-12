@@ -11,21 +11,21 @@ using WorkflowDesigner.Infrastructure.Data;
 namespace WorkflowDesigner.Infrastructure.Database
 {
     /// <summary>
-    /// 数据库管理器，负责数据库连接、初始化和维护
+    /// 负责数据库连接、初始化和维护
     /// </summary>
-    public class DatabaseManager
+    public class EnhancedDatabaseManager
     {
         private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
         private readonly string _connectionString;
         private readonly string _environment;
 
-        public DatabaseManager()
+        public EnhancedDatabaseManager()
         {
             _environment = ConfigurationManager.AppSettings["DatabaseEnvironment"] ?? "Development";
             _connectionString = GetConnectionString();
         }
 
-        public DatabaseManager(string connectionString)
+        public EnhancedDatabaseManager(string connectionString)
         {
             _connectionString = connectionString;
         }
@@ -81,7 +81,7 @@ namespace WorkflowDesigner.Infrastructure.Database
         }
 
         /// <summary>
-        /// 初始化数据库
+        /// 完整初始化数据库
         /// </summary>
         public async Task<bool> InitializeDatabaseAsync()
         {
@@ -89,13 +89,23 @@ namespace WorkflowDesigner.Infrastructure.Database
             {
                 Logger.Info("开始初始化数据库...");
 
-                // 检查数据库是否存在，如果不存在则创建
+                // 1. 检查数据库是否存在，如果不存在则创建
                 await EnsureDatabaseExistsAsync();
 
-                // 初始化Entity Framework上下文
+                // 2. 验证数据库连接
+                if (!await TestConnectionAsync())
+                {
+                    Logger.Error("数据库连接验证失败");
+                    return false;
+                }
+
+                // 3. 初始化Entity Framework上下文
                 using (var context = new WorkflowDbContext(_connectionString))
                 {
-                    // 如果数据库不存在，则创建数据库
+                    // 设置命令超时时间
+                    context.Database.CommandTimeout = 120;
+
+                    // 检查数据库是否存在，如果不存在则创建
                     if (!context.Database.Exists())
                     {
                         Logger.Info("数据库不存在，正在创建...");
@@ -104,11 +114,28 @@ namespace WorkflowDesigner.Infrastructure.Database
                     }
                     else
                     {
-                        Logger.Info("数据库已存在");
+                        Logger.Info("数据库已存在，检查表结构...");
+
+                        // 验证表结构
+                        await ValidateTableStructureAsync(context);
                     }
+
+                    // 4. 确保数据库迁移到最新版本
+                    try
+                    {
+                        context.Database.Initialize(force: false);
+                        Logger.Info("数据库初始化完成");
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Warn(ex, "数据库初始化过程中出现警告，但继续执行");
+                    }
+
+                    // 5. 验证基本表结构
+                    await VerifyEssentialTablesAsync();
                 }
 
-                Logger.Info("数据库初始化完成");
+                Logger.Info("数据库完整初始化成功");
                 return true;
             }
             catch (Exception ex)
@@ -125,11 +152,12 @@ namespace WorkflowDesigner.Infrastructure.Database
         {
             var builder = new MySqlConnectionStringBuilder(_connectionString);
             var databaseName = builder.Database;
-            builder.Database = ""; // 连接到MySQL服务器而不是特定数据库
+            var serverConnectionString = builder.ConnectionString.Replace($"Database={databaseName};", "");
 
-            using (var connection = new MySqlConnection(builder.ConnectionString))
+            using (var connection = new MySqlConnection(serverConnectionString))
             {
                 await connection.OpenAsync();
+                Logger.Info($"已连接到MySQL服务器: {builder.Server}:{builder.Port}");
 
                 using (var command = connection.CreateCommand())
                 {
@@ -137,6 +165,292 @@ namespace WorkflowDesigner.Infrastructure.Database
                     await command.ExecuteNonQueryAsync();
                     Logger.Info($"确保数据库 {databaseName} 存在");
                 }
+            }
+        }
+
+        /// <summary>
+        /// 验证表结构
+        /// </summary>
+        private async Task ValidateTableStructureAsync(WorkflowDbContext context)
+        {
+            try
+            {
+                var requiredTables = new[] {
+                    "workflow_definitions",
+                    "workflow_instances",
+                    "workflow_node_executions",
+                    "approval_tasks"
+                };
+
+                foreach (var tableName in requiredTables)
+                {
+                    var tableExists = await context.Database.SqlQuery<int>(
+                        $"SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = '{tableName}'"
+                    ).FirstOrDefaultAsync();
+
+                    if (tableExists == 0)
+                    {
+                        Logger.Warn($"表 {tableName} 不存在，将通过EF创建");
+                    }
+                    else
+                    {
+                        Logger.Info($"表 {tableName} 已存在");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex, "验证表结构时发生错误");
+            }
+        }
+
+        /// <summary>
+        /// 验证核心表是否存在
+        /// </summary>
+        private async Task VerifyEssentialTablesAsync()
+        {
+            try
+            {
+                using (var connection = new MySqlConnection(_connectionString))
+                {
+                    await connection.OpenAsync();
+
+                    var requiredTables = new[] {
+                        "workflow_definitions",
+                        "workflow_instances",
+                        "workflow_node_executions",
+                        "approval_tasks"
+                    };
+
+                    foreach (var tableName in requiredTables)
+                    {
+                        using (var command = new MySqlCommand(
+                            $"SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = '{tableName}'",
+                            connection))
+                        {
+                            var exists = Convert.ToInt32(await command.ExecuteScalarAsync()) > 0;
+                            if (exists)
+                            {
+                                Logger.Info($"验证表 {tableName} 存在");
+                            }
+                            else
+                            {
+                                Logger.Error($"核心表 {tableName} 不存在！");
+                                throw new InvalidOperationException($"数据库缺少必需的表: {tableName}");
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex, "验证核心表时发生错误");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// 创建缺失的表
+        /// </summary>
+        public async Task<bool> CreateMissingTablesAsync()
+        {
+            try
+            {
+                Logger.Info("开始创建缺失的表...");
+
+                using (var connection = new MySqlConnection(_connectionString))
+                {
+                    await connection.OpenAsync();
+
+                    // 创建表的SQL脚本
+                    var createTableScripts = new Dictionary<string, string>
+                    {
+                        ["workflow_definitions"] = @"
+                            CREATE TABLE IF NOT EXISTS `workflow_definitions` (
+                              `Id` VARCHAR(36) NOT NULL PRIMARY KEY,
+                              `Name` VARCHAR(200) NOT NULL,
+                              `Description` VARCHAR(1000) NULL,
+                              `Version` VARCHAR(50) NOT NULL DEFAULT '1.0',
+                              `Category` VARCHAR(100) NULL,
+                              `NodesJson` LONGTEXT NULL,
+                              `ConnectionsJson` LONGTEXT NULL,
+                              `StartNodeId` VARCHAR(36) NULL,
+                              `CreatedTime` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                              `UpdatedTime` DATETIME NULL,
+                              `CreatedBy` VARCHAR(100) NULL,
+                              `IsActive` BOOLEAN NOT NULL DEFAULT TRUE,
+                              INDEX `idx_name` (`Name`),
+                              INDEX `idx_category` (`Category`),
+                              INDEX `idx_created_time` (`CreatedTime`)
+                            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;",
+
+                        ["workflow_instances"] = @"
+                            CREATE TABLE IF NOT EXISTS `workflow_instances` (
+                              `Id` VARCHAR(36) NOT NULL PRIMARY KEY,
+                              `DefinitionId` VARCHAR(36) NOT NULL,
+                              `Status` INT NOT NULL DEFAULT 1,
+                              `CurrentNodeId` VARCHAR(36) NULL,
+                              `DataJson` LONGTEXT NULL,
+                              `StartTime` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                              `EndTime` DATETIME NULL,
+                              `StartedBy` VARCHAR(100) NULL,
+                              `ErrorMessage` VARCHAR(1000) NULL,
+                              INDEX `idx_definition_id` (`DefinitionId`),
+                              INDEX `idx_status` (`Status`),
+                              INDEX `idx_start_time` (`StartTime`),
+                              INDEX `idx_started_by` (`StartedBy`)
+                            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;",
+
+                        ["workflow_node_executions"] = @"
+                            CREATE TABLE IF NOT EXISTS `workflow_node_executions` (
+                              `Id` VARCHAR(36) NOT NULL PRIMARY KEY,
+                              `InstanceId` VARCHAR(36) NOT NULL,
+                              `NodeId` VARCHAR(36) NOT NULL,
+                              `NodeName` VARCHAR(200) NULL,
+                              `Status` INT NOT NULL DEFAULT 1,
+                              `StartTime` DATETIME NULL,
+                              `EndTime` DATETIME NULL,
+                              `ExecutorId` VARCHAR(100) NULL,
+                              `ErrorMessage` VARCHAR(1000) NULL,
+                              `InputDataJson` TEXT NULL,
+                              `OutputDataJson` TEXT NULL,
+                              INDEX `idx_instance_id` (`InstanceId`),
+                              INDEX `idx_node_id` (`NodeId`),
+                              INDEX `idx_status` (`Status`),
+                              INDEX `idx_start_time` (`StartTime`)
+                            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;",
+
+                        ["approval_tasks"] = @"
+                            CREATE TABLE IF NOT EXISTS `approval_tasks` (
+                              `Id` VARCHAR(36) NOT NULL PRIMARY KEY,
+                              `InstanceId` VARCHAR(36) NOT NULL,
+                              `NodeId` VARCHAR(36) NOT NULL,
+                              `Title` VARCHAR(200) NOT NULL,
+                              `Content` VARCHAR(2000) NULL,
+                              `ApproverId` VARCHAR(100) NULL,
+                              `Status` INT NOT NULL DEFAULT 1,
+                              `CreatedTime` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                              `ApprovedTime` DATETIME NULL,
+                              `ApprovalComment` VARCHAR(1000) NULL,
+                              `IsApproved` BOOLEAN NOT NULL DEFAULT FALSE,
+                              INDEX `idx_instance_id` (`InstanceId`),
+                              INDEX `idx_node_id` (`NodeId`),
+                              INDEX `idx_approver_id` (`ApproverId`),
+                              INDEX `idx_status` (`Status`),
+                              INDEX `idx_created_time` (`CreatedTime`)
+                            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;"
+                    };
+
+                    foreach (var script in createTableScripts)
+                    {
+                        try
+                        {
+                            using (var command = new MySqlCommand(script.Value, connection))
+                            {
+                                command.CommandTimeout = 60;
+                                await command.ExecuteNonQueryAsync();
+                                Logger.Info($"表 {script.Key} 创建成功");
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Logger.Error(ex, $"创建表 {script.Key} 失败");
+                            throw;
+                        }
+                    }
+
+                    // 添加外键约束
+                    await AddForeignKeyConstraintsAsync(connection);
+                }
+
+                Logger.Info("缺失的表创建完成");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex, "创建缺失的表时发生错误");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 添加外键约束
+        /// </summary>
+        private async Task AddForeignKeyConstraintsAsync(MySqlConnection connection)
+        {
+            try
+            {
+                var foreignKeyScripts = new[]
+                {
+                    @"ALTER TABLE `workflow_instances` 
+                      ADD CONSTRAINT `fk_instances_definitions` 
+                      FOREIGN KEY (`DefinitionId`) REFERENCES `workflow_definitions`(`Id`) 
+                      ON DELETE RESTRICT;",
+
+                    @"ALTER TABLE `workflow_node_executions` 
+                      ADD CONSTRAINT `fk_executions_instances` 
+                      FOREIGN KEY (`InstanceId`) REFERENCES `workflow_instances`(`Id`) 
+                      ON DELETE CASCADE;",
+
+                    @"ALTER TABLE `approval_tasks` 
+                      ADD CONSTRAINT `fk_tasks_instances` 
+                      FOREIGN KEY (`InstanceId`) REFERENCES `workflow_instances`(`Id`) 
+                      ON DELETE CASCADE;"
+                };
+
+                foreach (var script in foreignKeyScripts)
+                {
+                    try
+                    {
+                        using (var command = new MySqlCommand(script, connection))
+                        {
+                            await command.ExecuteNonQueryAsync();
+                        }
+                    }
+                    catch (MySqlException ex) when (ex.Number == 1061) // Duplicate key name
+                    {
+                        // 外键约束已存在，忽略此错误
+                        Logger.Info("外键约束已存在，跳过创建");
+                    }
+                }
+
+                Logger.Info("外键约束添加完成");
+            }
+            catch (Exception ex)
+            {
+                Logger.Warn(ex, "添加外键约束时发生警告，但不影响主要功能");
+            }
+        }
+
+        /// <summary>
+        /// 插入示例数据
+        /// </summary>
+        public async Task<bool> InsertSampleDataAsync()
+        {
+            try
+            {
+                Logger.Info("开始插入示例数据...");
+
+                using (var context = new WorkflowDbContext(_connectionString))
+                {
+                    // 检查是否已有数据
+                    if (await context.WorkflowDefinitions.AnyAsync())
+                    {
+                        Logger.Info("数据库已有数据，跳过示例数据插入");
+                        return true;
+                    }
+
+                    // 触发种子数据创建
+                    context.Database.Initialize(force: false);
+                }
+
+                Logger.Info("示例数据插入完成");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex, "插入示例数据失败");
+                return false;
             }
         }
 
@@ -181,58 +495,6 @@ namespace WorkflowDesigner.Infrastructure.Database
             catch (Exception ex)
             {
                 Logger.Error(ex, "数据库备份过程中发生错误");
-                return false;
-            }
-        }
-
-        /// <summary>
-        /// 还原数据库
-        /// </summary>
-        public async Task<bool> RestoreDatabaseAsync(string backupPath)
-        {
-            try
-            {
-                Logger.Info($"开始从备份文件还原数据库: {backupPath}");
-
-                if (!System.IO.File.Exists(backupPath))
-                {
-                    Logger.Error($"备份文件不存在: {backupPath}");
-                    return false;
-                }
-
-                var builder = new MySqlConnectionStringBuilder(_connectionString);
-                var restoreCommand = $"mysql --host={builder.Server} --port={builder.Port} --user={builder.UserID} --password={builder.Password} {builder.Database} < \"{backupPath}\"";
-
-                var processInfo = new System.Diagnostics.ProcessStartInfo
-                {
-                    FileName = "cmd.exe",
-                    Arguments = $"/c {restoreCommand}",
-                    UseShellExecute = false,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    CreateNoWindow = true
-                };
-
-                using (var process = System.Diagnostics.Process.Start(processInfo))
-                {
-                    process.WaitForExit();
-
-                    if (process.ExitCode == 0)
-                    {
-                        Logger.Info("数据库还原成功");
-                        return true;
-                    }
-                    else
-                    {
-                        var error = await process.StandardError.ReadToEndAsync();
-                        Logger.Error($"数据库还原失败: {error}");
-                        return false;
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Logger.Error(ex, "数据库还原过程中发生错误");
                 return false;
             }
         }
@@ -304,109 +566,6 @@ namespace WorkflowDesigner.Infrastructure.Database
         }
 
         /// <summary>
-        /// 清理数据库（删除过期数据）
-        /// </summary>
-        public async Task<bool> CleanupDatabaseAsync(int retentionDays = 90)
-        {
-            try
-            {
-                Logger.Info($"开始清理数据库，保留 {retentionDays} 天内的数据");
-
-                using (var context = new WorkflowDbContext(_connectionString))
-                {
-                    var cutoffDate = DateTime.Now.AddDays(-retentionDays);
-
-                    // 删除过期的工作流实例
-                    var expiredInstances = await context.WorkflowInstances
-                        .Where(wi => wi.EndTime.HasValue && wi.EndTime < cutoffDate)
-                        .ToListAsync();
-
-                    if (expiredInstances.Any())
-                    {
-                        Logger.Info($"找到 {expiredInstances.Count} 个过期的工作流实例");
-
-                        // 删除相关的节点执行记录
-                        var instanceIds = expiredInstances.Select(wi => wi.Id).ToList();
-                        var expiredExecutions = await context.WorkflowNodeExecutions
-                            .Where(wne => instanceIds.Contains(wne.InstanceId))
-                            .ToListAsync();
-
-                        context.WorkflowNodeExecutions.RemoveRange(expiredExecutions);
-
-                        // 删除相关的审批任务
-                        var expiredTasks = await context.ApprovalTasks
-                            .Where(at => instanceIds.Contains(at.InstanceId))
-                            .ToListAsync();
-
-                        context.ApprovalTasks.RemoveRange(expiredTasks);
-
-                        // 删除工作流实例
-                        context.WorkflowInstances.RemoveRange(expiredInstances);
-
-                        await context.SaveChangesAsync();
-
-                        Logger.Info($"已清理 {expiredInstances.Count} 个过期工作流实例及相关数据");
-                    }
-                    else
-                    {
-                        Logger.Info("没有找到需要清理的过期数据");
-                    }
-                }
-
-                return true;
-            }
-            catch (Exception ex)
-            {
-                Logger.Error(ex, "数据库清理失败");
-                return false;
-            }
-        }
-
-        /// <summary>
-        /// 优化数据库表
-        /// </summary>
-        public async Task<bool> OptimizeTablesAsync()
-        {
-            try
-            {
-                Logger.Info("开始优化数据库表");
-
-                using (var connection = new MySqlConnection(_connectionString))
-                {
-                    await connection.OpenAsync();
-
-                    var builder = new MySqlConnectionStringBuilder(_connectionString);
-                    var tables = new[] { "workflow_definitions", "workflow_instances", "workflow_node_executions", "approval_tasks" };
-
-                    foreach (var table in tables)
-                    {
-                        using (var command = new MySqlCommand($"OPTIMIZE TABLE `{builder.Database}`.`{table}`", connection))
-                        {
-                            await command.ExecuteNonQueryAsync();
-                            Logger.Info($"表 {table} 优化完成");
-                        }
-                    }
-                }
-
-                Logger.Info("数据库表优化完成");
-                return true;
-            }
-            catch (Exception ex)
-            {
-                Logger.Error(ex, "数据库表优化失败");
-                return false;
-            }
-        }
-
-        /// <summary>
-        /// 创建数据库连接
-        /// </summary>
-        public WorkflowDbContext CreateDbContext()
-        {
-            return new WorkflowDbContext(_connectionString);
-        }
-
-        /// <summary>
         /// 执行健康检查
         /// </summary>
         public async Task<HealthCheckResult> PerformHealthCheckAsync()
@@ -449,7 +608,16 @@ namespace WorkflowDesigner.Infrastructure.Database
                     if (tableExists != 4)
                     {
                         result.IsHealthy = false;
-                        result.ErrorMessage = "缺少必需的数据库表";
+                        result.ErrorMessage = $"缺少必需的数据库表，当前只有 {tableExists} 个表";
+
+                        // 尝试自动修复
+                        Logger.Warn("检测到缺少数据库表，尝试自动创建...");
+                        if (await CreateMissingTablesAsync())
+                        {
+                            result.Warnings.Add("已自动创建缺失的数据库表");
+                            result.IsHealthy = true;
+                            result.ErrorMessage = null;
+                        }
                     }
                 }
 
@@ -475,6 +643,14 @@ namespace WorkflowDesigner.Infrastructure.Database
             }
 
             return result;
+        }
+
+        /// <summary>
+        /// 创建数据库连接
+        /// </summary>
+        public WorkflowDbContext CreateDbContext()
+        {
+            return new WorkflowDbContext(_connectionString);
         }
     }
 

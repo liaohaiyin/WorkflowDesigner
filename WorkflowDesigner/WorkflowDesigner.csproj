@@ -98,8 +98,8 @@
     <Reference Include="DryIoc, Version=5.4.3.0, Culture=neutral, PublicKeyToken=dfbf2bd50fcf7768, processorArchitecture=MSIL">
       <HintPath>..\packages\DryIoc.dll.5.4.3\lib\net45\DryIoc.dll</HintPath>
     </Reference>
-    <Reference Include="DynamicData, Version=7.12.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\DynamicData.7.12.8\lib\net462\DynamicData.dll</HintPath>
+    <Reference Include="DynamicData, Version=7.1.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\DynamicData.7.1.1\lib\net461\DynamicData.dll</HintPath>
     </Reference>
     <Reference Include="EntityFramework, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089, processorArchitecture=MSIL">
       <HintPath>..\packages\EntityFramework.6.5.1\lib\net45\EntityFramework.dll</HintPath>
@@ -171,17 +171,17 @@
     <Reference Include="Prism.Wpf, Version=8.1.97.5141, Culture=neutral, PublicKeyToken=40ee6c3a2184dc59, processorArchitecture=MSIL">
       <HintPath>..\packages\Prism.Wpf.8.1.97\lib\net47\Prism.Wpf.dll</HintPath>
     </Reference>
-    <Reference Include="ReactiveUI, Version=18.4.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\ReactiveUI.18.4.1\lib\net472\ReactiveUI.dll</HintPath>
+    <Reference Include="ReactiveUI, Version=13.2.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\ReactiveUI.13.2.18\lib\net472\ReactiveUI.dll</HintPath>
     </Reference>
     <Reference Include="ReactiveUI.Events.WPF, Version=13.2.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\ReactiveUI.Events.WPF.13.2.18\lib\net48\ReactiveUI.Events.WPF.dll</HintPath>
     </Reference>
-    <Reference Include="ReactiveUI.Wpf, Version=18.4.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\ReactiveUI.WPF.18.4.1\lib\net48\ReactiveUI.Wpf.dll</HintPath>
+    <Reference Include="ReactiveUI.Wpf, Version=13.2.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\ReactiveUI.WPF.13.2.18\lib\net48\ReactiveUI.Wpf.dll</HintPath>
     </Reference>
-    <Reference Include="Splat, Version=14.7.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Splat.14.7.1\lib\netstandard2.0\Splat.dll</HintPath>
+    <Reference Include="Splat, Version=15.1.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Splat.15.1.1\lib\netstandard2.0\Splat.dll</HintPath>
     </Reference>
     <Reference Include="Splat.Drawing, Version=11.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\Splat.Drawing.11.0.1\lib\net461\Splat.Drawing.dll</HintPath>
@@ -296,6 +296,8 @@
     <Compile Include="Infrastructure\Database\DatabaseManager.cs" />
     <Compile Include="Infrastructure\Data\MySqlEFConfiguration.cs" />
     <Compile Include="Infrastructure\Data\WorkflowDbContext.cs" />
+    <Compile Include="Infrastructure\Services\PrismServiceProviderAdapter.cs" />
+    <Compile Include="Infrastructure\Startup\StartupHelper.cs" />
     <Compile Include="Nodes\WorkflowNodeViewModel.cs" />
     <Compile Include="UI\Converters\CommConverter.cs" />
     <Compile Include="UI\ViewModels\MainWindowViewModel.cs" />
@@ -384,6 +386,9 @@
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
+    <None Include="NLog.config">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Include="packages.config" />
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
