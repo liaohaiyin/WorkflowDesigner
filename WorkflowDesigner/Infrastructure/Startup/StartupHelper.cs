@@ -349,8 +349,8 @@ namespace WorkflowDesigner.Infrastructure.Startup
                 else
                 {
                     message += "应用程序可以正常启动，但建议处理上述警告。";
-                    MessageBox.Show(message, "启动检查",
-                        MessageBoxButton.OK, MessageBoxImage.Information);
+                    //MessageBox.Show(message, "启动检查",
+                    //    MessageBoxButton.OK, MessageBoxImage.Information);
                     return true;
                 }
             }

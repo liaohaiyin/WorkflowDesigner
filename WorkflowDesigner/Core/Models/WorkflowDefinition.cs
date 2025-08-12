@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 namespace WorkflowDesigner.Core.Models
 {
     // 工作流定义
-    [Table("WorkflowDefinitions")]
+    [Table("workflow_definitions")]
     public class WorkflowDefinition
     {
         [Key]
@@ -42,7 +42,7 @@ namespace WorkflowDesigner.Core.Models
     }
 
     // 工作流实例
-    [Table("WorkflowInstances")]
+    [Table("workflow_instances")]
     public class WorkflowInstance
     {
         [Key]
@@ -70,15 +70,64 @@ namespace WorkflowDesigner.Core.Models
 
         public virtual ICollection<WorkflowNodeExecution> NodeExecutions { get; set; } = new List<WorkflowNodeExecution>();
 
-        public string Duration { get; set; }
-        public bool CanPause { get; set; }
-        public bool CanResume { get; set; }
-        public bool CanTerminate { get; set; }
-        public bool HasError { get; set; }
+        // 计算属性 - 不映射到数据库
+        [NotMapped]
+        public string Duration
+        {
+            get
+            {
+                var endTime = EndTime ?? DateTime.Now;
+                var duration = endTime - StartTime;
+
+                if (duration.TotalDays >= 1)
+                    return $"{(int)duration.TotalDays}天 {duration.Hours:D2}:{duration.Minutes:D2}:{duration.Seconds:D2}";
+                else if (duration.TotalHours >= 1)
+                    return $"{duration.Hours:D2}:{duration.Minutes:D2}:{duration.Seconds:D2}";
+                else if (duration.TotalMinutes >= 1)
+                    return $"{duration.Minutes:D2}:{duration.Seconds:D2}";
+                else
+                    return $"{duration.Seconds}秒";
+            }
+        }
+
+        // 计算属性 - 不映射到数据库
+        [NotMapped]
+        public bool CanPause => Status == WorkflowInstanceStatus.Running;
+
+        [NotMapped]
+        public bool CanResume => Status == WorkflowInstanceStatus.Paused;
+
+        [NotMapped]
+        public bool CanTerminate => Status == WorkflowInstanceStatus.Running || Status == WorkflowInstanceStatus.Paused;
+
+        [NotMapped]
+        public bool HasError => !string.IsNullOrEmpty(ErrorMessage);
+
+        // 实际运行时长（以分钟为单位）- 不映射到数据库
+        [NotMapped]
+        public double DurationInMinutes
+        {
+            get
+            {
+                var endTime = EndTime ?? DateTime.Now;
+                return (endTime - StartTime).TotalMinutes;
+            }
+        }
+
+        // 实际运行时长（以小时为单位）- 不映射到数据库
+        [NotMapped]
+        public double DurationInHours
+        {
+            get
+            {
+                var endTime = EndTime ?? DateTime.Now;
+                return (endTime - StartTime).TotalHours;
+            }
+        }
     }
 
     // 节点执行记录
-    [Table("WorkflowNodeExecutions")]
+    [Table("workflow_node_executions")]
     public class WorkflowNodeExecution
     {
         [Key]
@@ -109,10 +158,38 @@ namespace WorkflowDesigner.Core.Models
         // 导航属性
         [ForeignKey("InstanceId")]
         public virtual WorkflowInstance Instance { get; set; }
+
+        // 计算属性 - 执行时长
+        [NotMapped]
+        public string ExecutionDuration
+        {
+            get
+            {
+                if (!StartTime.HasValue) return "未开始";
+                if (!EndTime.HasValue) return "执行中";
+
+                var duration = EndTime.Value - StartTime.Value;
+                if (duration.TotalMinutes >= 1)
+                    return $"{duration.Minutes:D2}:{duration.Seconds:D2}";
+                else
+                    return $"{duration.TotalSeconds:F1}秒";
+            }
+        }
+
+        // 执行时长（毫秒）
+        [NotMapped]
+        public double ExecutionTimeInMilliseconds
+        {
+            get
+            {
+                if (!StartTime.HasValue || !EndTime.HasValue) return 0;
+                return (EndTime.Value - StartTime.Value).TotalMilliseconds;
+            }
+        }
     }
 
     // 审批任务
-    [Table("ApprovalTasks")]
+    [Table("approval_tasks")]
     public class ApprovalTask
     {
         [Key]
@@ -143,6 +220,35 @@ namespace WorkflowDesigner.Core.Models
         public string ApprovalComment { get; set; }
 
         public bool IsApproved { get; set; }
+
+        // 计算属性 - 待审批时长
+        [NotMapped]
+        public string PendingDuration
+        {
+            get
+            {
+                if (Status != ApprovalTaskStatus.Pending) return "";
+
+                var duration = DateTime.Now - CreatedTime;
+                if (duration.TotalDays >= 1)
+                    return $"{(int)duration.TotalDays}天";
+                else if (duration.TotalHours >= 1)
+                    return $"{(int)duration.TotalHours}小时";
+                else
+                    return $"{(int)duration.TotalMinutes}分钟";
+            }
+        }
+
+        // 是否超时（假设超过24小时为超时）
+        [NotMapped]
+        public bool IsTimeout
+        {
+            get
+            {
+                if (Status != ApprovalTaskStatus.Pending) return false;
+                return (DateTime.Now - CreatedTime).TotalHours > 24;
+            }
+        }
     }
 
     // 枚举定义
@@ -182,5 +288,32 @@ namespace WorkflowDesigner.Core.Models
         Approved = 2,
         Rejected = 3,
         Timeout = 4
+    }
+
+    // 工作流性能统计
+    public class WorkflowPerformanceStatistics
+    {
+        public string DefinitionId { get; set; }
+        public string DefinitionName { get; set; }
+        public int TotalExecutions { get; set; }
+        public int SuccessfulExecutions { get; set; }
+        public int FailedExecutions { get; set; }
+        public double AverageExecutionTimeMinutes { get; set; }
+        public double SuccessRate => TotalExecutions > 0 ? (double)SuccessfulExecutions / TotalExecutions * 100 : 0;
+        public double FailureRate => TotalExecutions > 0 ? (double)FailedExecutions / TotalExecutions * 100 : 0;
+    }
+
+    // 节点性能统计
+    public class NodePerformanceStatistics
+    {
+        public string NodeId { get; set; }
+        public string NodeName { get; set; }
+        public string NodeType { get; set; }
+        public int TotalExecutions { get; set; }
+        public int SuccessfulExecutions { get; set; }
+        public int FailedExecutions { get; set; }
+        public double AverageExecutionTimeSeconds { get; set; }
+        public double MaxExecutionTimeSeconds { get; set; }
+        public double MinExecutionTimeSeconds { get; set; }
     }
 }
