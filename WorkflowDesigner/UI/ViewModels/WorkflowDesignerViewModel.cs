@@ -174,7 +174,7 @@ namespace WorkflowDesigner.UI.ViewModels
             try
             {
                 // 使用属性变化通知而不是DynamicData的变化集
-                this.WhenAnyValue(x => x.Network.Nodes.Items.Count())
+                this.WhenAnyValue(x => x.Network.Nodes.Count)
                     .Skip(1) // 跳过初始值
                     .Subscribe(_ => OnNetworkChanged());
             }
@@ -189,7 +189,7 @@ namespace WorkflowDesigner.UI.ViewModels
             try
             {
                 // 使用属性变化通知而不是DynamicData的变化集
-                this.WhenAnyValue(x => x.Network.Connections.Items.Count())
+                this.WhenAnyValue(x => x.Network.Connections.Count)
                     .Skip(1) // 跳过初始值
                     .Subscribe(_ => OnNetworkChanged());
             }

@@ -277,7 +277,6 @@ namespace WorkflowDesigner.Infrastructure.Startup
                     "Newtonsoft.Json",
                     "NLog",
                     "NodeNetwork",
-                    "Prism.Core",
                     "ReactiveUI"
                 };
 
