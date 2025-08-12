@@ -28,22 +28,22 @@ namespace WorkflowDesigner.UI.ViewLocators
                 switch (viewModel)
                 {
                     case StartNodeViewModel _:
-                        return new StartNodeView { ViewModel = viewModel };
+                        return new StartNodeView { ViewModel = (StartNodeViewModel)viewModel };
 
                     case EndNodeViewModel _:
-                        return new EndNodeView { ViewModel = viewModel };
+                        return new EndNodeView { ViewModel = (EndNodeViewModel)viewModel };
 
                     case ApprovalNodeViewModel _:
-                        return new ApprovalNodeView { ViewModel = viewModel };
+                        return new ApprovalNodeView { ViewModel = (ApprovalNodeViewModel)viewModel };
 
                     case DecisionNodeViewModel _:
-                        return new DecisionNodeView { ViewModel = viewModel };
+                        return new DecisionNodeView { ViewModel = (DecisionNodeViewModel)viewModel };
 
                     case TaskNodeViewModel _:
-                        return new TaskNodeView { ViewModel = viewModel };
+                        return new TaskNodeView { ViewModel = (TaskNodeViewModel)viewModel };
 
                     case NotificationNodeViewModel _:
-                        return new NotificationNodeView { ViewModel = viewModel };
+                        return new NotificationNodeView { ViewModel = (NotificationNodeViewModel)viewModel };
                 }
             }
 

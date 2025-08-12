@@ -249,7 +249,6 @@ namespace WorkflowDesigner.UI.ViewModels
         #endregion
 
         #region 事件处理
-
         private void OnNodeSelectionChanged(object sender, EventArgs e)
         {
             try

@@ -216,17 +216,17 @@ namespace WorkflowDesigner.UI.ViewModels
         public ObservableCollection<User> AvailableUsers { get; } = new ObservableCollection<User>();
         public ObservableCollection<string> AvailableRoles { get; } = new ObservableCollection<string>
         {
-            "Manager", "Employee", "HR", "Finance", "Admin"
+            "管理者", "员工", "HR", "财务", "管理员"
         };
 
         public ObservableCollection<string> TaskTypes { get; } = new ObservableCollection<string>
         {
-            "Manual", "Auto", "Script", "WebService"
+            "手动", "自动", "脚本", "Web服务"
         };
 
         public ObservableCollection<string> NotificationTypes { get; } = new ObservableCollection<string>
         {
-            "Email", "SMS", "System", "WeChat"
+            "Email", "SMS", "系统", "即时工具"
         };
 
         private async void LoadAvailableUsers()
