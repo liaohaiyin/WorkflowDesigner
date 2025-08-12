@@ -49,7 +49,7 @@ namespace WorkflowDesigner.UI.ViewModels
                 {
                     Name = "判断",
                     Description = "条件判断节点，根据条件分支执行",
-                    Icon = "◆", // Unicode菱形
+                    Icon = "♦", // Unicode菱形
                     IconColor = "#FF9800", // 橙色
                     NodeType = typeof(DecisionNodeViewModel),
                     Category = "控制流"
@@ -66,7 +66,7 @@ namespace WorkflowDesigner.UI.ViewModels
                 new ToolboxItemViewModel
                 {
                     Name = "通知",
-                    Description = "消息通知节点，发送邮件、短信等通知",
+                    Description = "消息通知节点，发送邮件、信息等通知",
                     Icon = "📧", // Unicode邮件
                     IconColor = "#607D8B", // 蓝灰色
                     NodeType = typeof(NotificationNodeViewModel),
@@ -84,7 +84,7 @@ namespace WorkflowDesigner.UI.ViewModels
         public string Description { get; set; }
         public string Icon { get; set; } // 改为Unicode字符
         public string IconColor { get; set; } = "#666666"; // 图标颜色
-        public System.Type NodeType { get; set; }
+        public Type NodeType { get; set; }
         public string Category { get; set; }
 
         public bool IsSelected

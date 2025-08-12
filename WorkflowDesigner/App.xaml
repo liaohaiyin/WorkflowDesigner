@@ -18,7 +18,8 @@
             <converters:NumberFormatConverter x:Key="NumberFormatConverter"/>
             <converters:EnumToStringConverter x:Key="EnumToStringConverter"/>
             <converters:ColorStringToBrushConverter x:Key="ColorStringToBrushConverter"/>
-            
+
+            <!-- 节点视图模型到视图的数据模板映射 -->
             <DataTemplate DataType="{x:Type nodes:StartNodeViewModel}">
                 <nodeViews:StartNodeView/>
             </DataTemplate>

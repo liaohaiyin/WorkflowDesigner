@@ -52,7 +52,7 @@ namespace WorkflowDesigner.Infrastructure.Startup
 
                 if (result.Warnings.Count > 0)
                 {
-                    foreach (var warning in result.Warnings)
+                    foreach (var warning                                                                                                                                                                                                                                                                                                                in result.Warnings)
                     {
                         Logger.Warn($"启动检查警告: {warning}");
                     }

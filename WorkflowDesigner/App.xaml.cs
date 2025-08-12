@@ -12,7 +12,12 @@ using WorkflowDesigner.Infrastructure.Data;
 using WorkflowDesigner.Infrastructure.Database;
 using WorkflowDesigner.Infrastructure.Startup;
 using WorkflowDesigner.Infrastructure.Services;
+using WorkflowDesigner.UI.ViewLocators;
 using NLog;
+using ReactiveUI;
+using Splat;
+using WorkflowDesigner.UI.Views.Nodes;
+using WorkflowDesigner.Nodes;
 
 namespace WorkflowDesigner
 {
@@ -25,6 +30,9 @@ namespace WorkflowDesigner
             try
             {
                 Logger.Info("=== 工作流设计器启动 ===");
+
+                // 首先设置 ReactiveUI 的视图定位器
+                SetupReactiveUIViewLocator();
 
                 // 设置未处理异常处理器
                 SetupExceptionHandling();
@@ -53,16 +61,36 @@ namespace WorkflowDesigner
             }
         }
 
+        /// <summary>
+        /// 设置 ReactiveUI 的视图定位器
+        /// </summary>
+        private void SetupReactiveUIViewLocator()
+        {
+            try
+            {
+                // 注册自定义的视图定位器
+                Locator.CurrentMutable.RegisterConstant(new NodeViewLocator(), typeof(IViewLocator));
+
+                // 或者使用 ReactiveUI 的默认视图定位器并注册视图
+                Locator.CurrentMutable.Register(() => new StartNodeView(), typeof(IViewFor<StartNodeViewModel>));
+                Locator.CurrentMutable.Register(() => new EndNodeView(), typeof(IViewFor<EndNodeViewModel>));
+                Locator.CurrentMutable.Register(() => new ApprovalNodeView(), typeof(IViewFor<ApprovalNodeViewModel>));
+                Locator.CurrentMutable.Register(() => new DecisionNodeView(), typeof(IViewFor<DecisionNodeViewModel>));
+                Locator.CurrentMutable.Register(() => new TaskNodeView(), typeof(IViewFor<TaskNodeViewModel>));
+                Locator.CurrentMutable.Register(() => new NotificationNodeView(), typeof(IViewFor<NotificationNodeViewModel>));
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex, "设置 ReactiveUI 视图定位器失败");
+            }
+        }
+
         protected override Window CreateShell()
         {
             try
             {
-                Logger.Info("开始创建主窗口");
-
                 // 尝试从容器获取服务
                 var mainWindow = Container.Resolve<MainWindow>();
-
-                Logger.Info("主窗口创建成功");
                 return mainWindow;
             }
             catch (Exception ex)
@@ -82,8 +110,6 @@ namespace WorkflowDesigner
                 catch (Exception innerEx)
                 {
                     Logger.Error(innerEx, "备用方案也失败，创建最简单的窗口");
-
-                    // 最后的备用方案
                     return CreateFallbackWindow(innerEx);
                 }
             }
@@ -113,7 +139,6 @@ namespace WorkflowDesigner
             catch (Exception ex)
             {
                 Logger.Error(ex, "服务注册失败，但继续启动");
-                // 即使注册失败也继续，因为有备用方案
             }
         }
 

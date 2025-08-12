@@ -14,6 +14,7 @@ using WorkflowDesigner.Core.Models;
 using WorkflowDesigner.Core.Services;
 using WorkflowDesigner.Engine;
 using WorkflowDesigner.Nodes;
+using WorkflowDesigner.UI.ViewModels;
 using NLog;
 
 namespace WorkflowDesigner.UI.ViewModels
@@ -98,7 +99,7 @@ namespace WorkflowDesigner.UI.ViewModels
                 Network = new NetworkViewModel();
                 Logger.Debug("NetworkViewModel 创建成功");
             }
-            catch (System.MissingMethodException ex)
+            catch (MissingMethodException ex)
             {
                 Logger.Error(ex, "NetworkViewModel 创建失败，DynamicData版本不兼容");
                 throw;
@@ -118,7 +119,6 @@ namespace WorkflowDesigner.UI.ViewModels
             try
             {
                 // 创建一个最基本的NetworkViewModel实例
-                // 如果仍然失败，则使用自定义的简单实现
                 _network = CreateSimpleNetworkViewModel();
                 Logger.Info("使用备用网络视图模型");
             }
@@ -136,8 +136,6 @@ namespace WorkflowDesigner.UI.ViewModels
         private NetworkViewModel CreateSimpleNetworkViewModel()
         {
             // 这里可能需要根据实际的NodeNetwork版本创建一个简化的实现
-            // 如果无法创建NodeNetwork的NetworkViewModel，则返回null
-            // UI层应该检查Network是否为null并相应处理
             return null;
         }
 
@@ -153,13 +151,11 @@ namespace WorkflowDesigner.UI.ViewModels
                 // 使用更安全的方式监听变化，避免DynamicData版本问题
                 if (Network.Nodes != null)
                 {
-                    // 尝试使用兼容的方式监听节点变化
                     SetupNodesChangeListener();
                 }
 
                 if (Network.Connections != null)
                 {
-                    // 尝试使用兼容的方式监听连接变化
                     SetupConnectionsChangeListener();
                 }
             }
@@ -175,7 +171,7 @@ namespace WorkflowDesigner.UI.ViewModels
             {
                 // 使用属性变化通知而不是DynamicData的变化集
                 this.WhenAnyValue(x => x.Network.Nodes.Count)
-                    .Skip(1) // 跳过初始值
+                    .Skip(1)
                     .Subscribe(_ => OnNetworkChanged());
             }
             catch (Exception ex)
@@ -188,9 +184,8 @@ namespace WorkflowDesigner.UI.ViewModels
         {
             try
             {
-                // 使用属性变化通知而不是DynamicData的变化集
                 this.WhenAnyValue(x => x.Network.Connections.Count)
-                    .Skip(1) // 跳过初始值
+                    .Skip(1)
                     .Subscribe(_ => OnNetworkChanged());
             }
             catch (Exception ex)

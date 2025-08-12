@@ -299,7 +299,7 @@
     <Compile Include="Infrastructure\Services\PrismServiceProviderAdapter.cs" />
     <Compile Include="Infrastructure\Startup\StartupHelper.cs" />
     <Compile Include="Nodes\WorkflowNodeViewModel.cs" />
-    <Compile Include="UI\Converters\CommConverter.cs" />
+    <Compile Include="UI\Converters\TypeConverter.cs" />
     <Compile Include="UI\ViewLocators\NodeViewLocator.cs" />
     <Compile Include="UI\ViewModels\MainWindowViewModel.cs" />
     <Compile Include="UI\ViewModels\OutputPanelViewModel.cs" />

@@ -32,65 +32,48 @@
         </Style>
     </UserControl.Resources>
 
-    <Grid>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-        </Grid.RowDefinitions>
+    <!-- 工具项列表 -->
+    <ScrollViewer VerticalScrollBarVisibility="Auto" 
+                  HorizontalScrollBarVisibility="Disabled" Padding="5">
+        <ItemsControl ItemsSource="{Binding ToolboxItems}">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                    <Border Style="{StaticResource ToolboxItemStyle}"
+                            MouseLeftButtonDown="ToolboxItem_MouseLeftButtonDown"
+                            ToolTip="{Binding Description}">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
 
-        <!-- 标题栏 -->
-        <Border Grid.Row="0" Background="#F5F5F5" BorderBrush="#E0E0E0" 
-                BorderThickness="0,0,0,1" Padding="12,10">
-            <StackPanel Orientation="Horizontal">
-                <TextBlock Text="🔧" FontSize="16" Margin="0,0,8,0" VerticalAlignment="Center"/>
-                <TextBlock Text="工具箱" FontSize="14" FontWeight="Bold" 
-                           Foreground="#2C3E50" VerticalAlignment="Center"/>
-            </StackPanel>
-        </Border>
+                            <!-- 图标和名称 -->
+                            <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,6">
+                                <TextBlock Text="{Binding Icon}" FontSize="22" 
+                                           Foreground="{Binding IconColor, Converter={StaticResource ColorStringToBrushConverter}}"
+                                           Margin="0,0,10,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" 
+                                           FontSize="13" VerticalAlignment="Center"
+                                           Foreground="#2C3E50"/>
+                            </StackPanel>
 
-        <!-- 工具项列表 -->
-        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" 
-                      HorizontalScrollBarVisibility="Disabled" Padding="5">
-            <ItemsControl ItemsSource="{Binding ToolboxItems}">
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate>
-                        <Border Style="{StaticResource ToolboxItemStyle}"
-                                MouseLeftButtonDown="ToolboxItem_MouseLeftButtonDown"
-                                ToolTip="{Binding Description}">
-                            <Grid>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
-                                </Grid.RowDefinitions>
+                            <!-- 类别标签 -->
+                            <Border Grid.Row="1" Background="#E8F5E8" CornerRadius="10" 
+                                    Padding="6,2" HorizontalAlignment="Left" Margin="0,0,0,4">
+                                <TextBlock Text="{Binding Category}" FontSize="9" 
+                                           Foreground="#2E7D32" FontWeight="Medium"/>
+                            </Border>
 
-                                <!-- 图标和名称 -->
-                                <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,6">
-                                    <TextBlock Text="{Binding Icon}" FontSize="20" 
-                                               Foreground="{Binding IconColor, Converter={StaticResource ColorStringToBrushConverter}}"
-                                               Margin="0,0,10,0" VerticalAlignment="Center"/>
-                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" 
-                                               FontSize="13" VerticalAlignment="Center"
-                                               Foreground="#2C3E50"/>
-                                </StackPanel>
-
-                                <!-- 类别标签 -->
-                                <Border Grid.Row="1" Background="#E8F5E8" CornerRadius="10" 
-                                        Padding="6,2" HorizontalAlignment="Left" Margin="0,0,0,4">
-                                    <TextBlock Text="{Binding Category}" FontSize="9" 
-                                               Foreground="#2E7D32" FontWeight="Medium"/>
-                                </Border>
-
-                                <!-- 描述 -->
-                                <TextBlock Grid.Row="2" Text="{Binding Description}" FontSize="10" 
-                                           Foreground="#757575" TextWrapping="Wrap"
-                                           LineHeight="14" MaxHeight="30" 
-                                           TextTrimming="CharacterEllipsis"/>
-                            </Grid>
-                        </Border>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
-        </ScrollViewer>
-    </Grid>
+                            <!-- 描述 -->
+                            <TextBlock Grid.Row="2" Text="{Binding Description}" FontSize="10" 
+                                       Foreground="#757575" TextWrapping="Wrap"
+                                       LineHeight="14" MaxHeight="30" 
+                                       TextTrimming="CharacterEllipsis"/>
+                        </Grid>
+                    </Border>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+    </ScrollViewer>
 </UserControl>

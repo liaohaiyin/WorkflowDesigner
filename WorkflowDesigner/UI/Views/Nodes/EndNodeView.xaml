@@ -7,7 +7,7 @@
                     xmlns:local="clr-namespace:WorkflowDesigner.UI.Views.Nodes"
                     xmlns:vm="clr-namespace:WorkflowDesigner.Nodes"
                     mc:Ignorable="d"
-                    Width="120" Height="60">
+                    Width="140" Height="80">
     <Border Background="#FFEBEE" BorderBrush="#F44336" BorderThickness="2" CornerRadius="8">
         <Grid>
             <Grid.RowDefinitions>

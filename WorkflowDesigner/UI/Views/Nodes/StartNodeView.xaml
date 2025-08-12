@@ -16,15 +16,19 @@
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
 
-            <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Center" Margin="5,3">
-                <TextBlock Text="▶" FontSize="14" Foreground="#4CAF50" Margin="0,0,3,0"/>
-                <TextBlock Text="开始" FontWeight="Bold" FontSize="12" Foreground="#2E7D32"/>
+            <!-- 标题栏 -->
+            <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Center" Margin="5,5">
+                <TextBlock Text="▶" FontSize="16" Foreground="#4CAF50" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                <TextBlock Text="开始" FontWeight="Bold" FontSize="14" Foreground="#2E7D32" VerticalAlignment="Center"/>
             </StackPanel>
 
-            <TextBlock Grid.Row="1" Text="{Binding NodeName}" 
-                     FontSize="10" HorizontalAlignment="Center" 
-                     VerticalAlignment="Center" TextWrapping="Wrap"
-                     Margin="3" Foreground="#1B5E20"/>
+            <!-- 内容区域 -->
+            <Grid Grid.Row="1" Margin="8,2,8,8">
+                <TextBlock Text="{Binding NodeName}" 
+                         FontSize="12" HorizontalAlignment="Center" 
+                         VerticalAlignment="Center" TextWrapping="Wrap"
+                         Foreground="#1B5E20" TextAlignment="Center"/>
+            </Grid>
         </Grid>
     </Border>
 </local:NodeViewBase>

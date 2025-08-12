@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Windows;
 using System.Windows.Data;
 using System.Windows.Media;
+using WorkflowDesigner.Core.Models;
 using WorkflowDesigner.UI.ViewModels;
 // ============================================================================
 // 2. 其他常用转换器
@@ -198,28 +199,28 @@ namespace WorkflowDesigner.UI.Converters
             {
                 switch (enumValue)
                 {
-                    case WorkflowDesigner.Core.Models.WorkflowInstanceStatus.Running:
+                    case WorkflowInstanceStatus.Running:
                         return "运行中";
-                    case WorkflowDesigner.Core.Models.WorkflowInstanceStatus.Paused:
+                    case WorkflowInstanceStatus.Paused:
                         return "已暂停";
-                    case WorkflowDesigner.Core.Models.WorkflowInstanceStatus.Completed:
+                    case WorkflowInstanceStatus.Completed:
                         return "已完成";
-                    case WorkflowDesigner.Core.Models.WorkflowInstanceStatus.Failed:
+                    case WorkflowInstanceStatus.Failed:
                         return "失败";
-                    case WorkflowDesigner.Core.Models.WorkflowInstanceStatus.Terminated:
+                    case WorkflowInstanceStatus.Terminated:
                         return "已终止";
 
-                    case WorkflowDesigner.Core.Models.WorkflowNodeStatus.Pending:
+                    case WorkflowNodeStatus.Pending:
                         return "待处理";
-                    case WorkflowDesigner.Core.Models.WorkflowNodeStatus.InProgress:
+                    case WorkflowNodeStatus.InProgress:
                         return "进行中";
-                    case WorkflowDesigner.Core.Models.WorkflowNodeStatus.Completed:
+                    case WorkflowNodeStatus.Completed:
                         return "已完成";
-                    case WorkflowDesigner.Core.Models.WorkflowNodeStatus.Failed:
+                    case WorkflowNodeStatus.Failed:
                         return "失败";
-                    case WorkflowDesigner.Core.Models.WorkflowNodeStatus.Skipped:
+                    case WorkflowNodeStatus.Skipped:
                         return "跳过";
-                    case WorkflowDesigner.Core.Models.WorkflowNodeStatus.Timeout:
+                    case WorkflowNodeStatus.Timeout:
                         return "超时";
                     default:
                         return enumValue.ToString();
