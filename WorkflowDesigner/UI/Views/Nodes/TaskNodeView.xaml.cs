@@ -12,13 +12,14 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
+using WorkflowDesigner.Nodes;
 
 namespace WorkflowDesigner.UI.Views.Nodes
 {
     /// <summary>
     /// TaskNodeView.xaml 的交互逻辑
     /// </summary>
-    public partial class TaskNodeView : UserControl
+    public partial class TaskNodeView : NodeViewBase<TaskNodeViewModel>
     {
         public TaskNodeView()
         {

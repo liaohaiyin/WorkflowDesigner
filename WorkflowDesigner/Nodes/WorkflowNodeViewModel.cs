@@ -29,7 +29,7 @@ namespace WorkflowDesigner.Nodes
 
         public WorkflowNodeViewModel()
         {
-            // NodeNetwork 3.0.2 使用的是继承的端口集合
+            // NodeNetwork 库的端口集合通过继承获得
             // 不需要重新初始化 Inputs 和 Outputs
         }
 
@@ -154,6 +154,7 @@ namespace WorkflowDesigner.Nodes
             }
         }
     }
+
     // 开始节点
     public class StartNodeViewModel : WorkflowNodeViewModel
     {
@@ -162,10 +163,13 @@ namespace WorkflowDesigner.Nodes
         public StartNodeViewModel()
         {
             NodeName = "开始";
-            this.Outputs.Add(new ValueNodeOutputViewModel<object>
+
+            // 创建输出端口
+            var outputPort = new ValueNodeOutputViewModel<object>
             {
                 Name = "输出"
-            });
+            };
+            this.Outputs.Add(outputPort);
         }
 
         public override async Task<WorkflowNodeResult> ExecuteAsync(WorkflowContext context)
@@ -183,6 +187,7 @@ namespace WorkflowDesigner.Nodes
             return ValidationResult.Success;
         }
     }
+
     // 结束节点
     public class EndNodeViewModel : WorkflowNodeViewModel
     {
@@ -191,10 +196,13 @@ namespace WorkflowDesigner.Nodes
         public EndNodeViewModel()
         {
             NodeName = "结束";
-            this.Inputs.Add(new ValueNodeInputViewModel<object>
+
+            // 创建输入端口
+            var inputPort = new ValueNodeInputViewModel<object>
             {
                 Name = "输入"
-            });
+            };
+            this.Inputs.Add(inputPort);
         }
 
         public override async Task<WorkflowNodeResult> ExecuteAsync(WorkflowContext context)
@@ -211,6 +219,7 @@ namespace WorkflowDesigner.Nodes
             return ValidationResult.Success;
         }
     }
+
     // 审批节点
     public class ApprovalNodeViewModel : WorkflowNodeViewModel
     {
@@ -218,7 +227,9 @@ namespace WorkflowDesigner.Nodes
         private string _approvalContent = "";
         private List<string> _approvers = new List<string>();
         private bool _requireAllApproval = true;
+
         public override WorkflowNodeType NodeType => WorkflowNodeType.Approval;
+
         public string ApprovalTitle
         {
             get => _approvalTitle;
@@ -247,20 +258,10 @@ namespace WorkflowDesigner.Nodes
         {
             NodeName = "审批节点";
 
-            this.Inputs.Add(new ValueNodeInputViewModel<object>
-            {
-                Name = "输入"
-            });
-
-            this.Outputs.Add(new ValueNodeOutputViewModel<object>
-            {
-                Name = "同意"
-            });
-
-            this.Outputs.Add(new ValueNodeOutputViewModel<object>
-            {
-                Name = "拒绝"
-            });
+            // 创建端口
+            this.Inputs.Add(new ValueNodeInputViewModel<object> { Name = "输入" });
+            this.Outputs.Add(new ValueNodeOutputViewModel<object> { Name = "同意" });
+            this.Outputs.Add(new ValueNodeOutputViewModel<object> { Name = "拒绝" });
         }
 
         public override async Task<WorkflowNodeResult> ExecuteAsync(WorkflowContext context)
@@ -324,6 +325,7 @@ namespace WorkflowDesigner.Nodes
             return errors.Any() ? ValidationResult.Error(errors) : ValidationResult.Success;
         }
     }
+
     // 判断节点
     public class DecisionNodeViewModel : WorkflowNodeViewModel
     {
@@ -341,20 +343,9 @@ namespace WorkflowDesigner.Nodes
         {
             NodeName = "判断节点";
 
-            this.Inputs.Add(new ValueNodeInputViewModel<object>
-            {
-                Name = "输入"
-            });
-
-            this.Outputs.Add(new ValueNodeOutputViewModel<object>
-            {
-                Name = "是"
-            });
-
-            this.Outputs.Add(new ValueNodeOutputViewModel<object>
-            {
-                Name = "否"
-            });
+            this.Inputs.Add(new ValueNodeInputViewModel<object> { Name = "输入" });
+            this.Outputs.Add(new ValueNodeOutputViewModel<object> { Name = "是" });
+            this.Outputs.Add(new ValueNodeOutputViewModel<object> { Name = "否" });
         }
 
         public override async Task<WorkflowNodeResult> ExecuteAsync(WorkflowContext context)
@@ -380,6 +371,7 @@ namespace WorkflowDesigner.Nodes
             return errors.Any() ? ValidationResult.Error(errors) : ValidationResult.Success;
         }
     }
+
     // 任务节点
     public class TaskNodeViewModel : WorkflowNodeViewModel
     {
@@ -411,20 +403,9 @@ namespace WorkflowDesigner.Nodes
         {
             NodeName = "任务节点";
 
-            this.Inputs.Add(new ValueNodeInputViewModel<object>
-            {
-                Name = "输入"
-            });
-
-            this.Outputs.Add(new ValueNodeOutputViewModel<object>
-            {
-                Name = "完成"
-            });
-
-            this.Outputs.Add(new ValueNodeOutputViewModel<object>
-            {
-                Name = "失败"
-            });
+            this.Inputs.Add(new ValueNodeInputViewModel<object> { Name = "输入" });
+            this.Outputs.Add(new ValueNodeOutputViewModel<object> { Name = "完成" });
+            this.Outputs.Add(new ValueNodeOutputViewModel<object> { Name = "失败" });
         }
 
         public override async Task<WorkflowNodeResult> ExecuteAsync(WorkflowContext context)
@@ -486,6 +467,7 @@ namespace WorkflowDesigner.Nodes
             return errors.Any() ? ValidationResult.Error(errors) : ValidationResult.Success;
         }
     }
+
     // 通知节点
     public class NotificationNodeViewModel : WorkflowNodeViewModel
     {
@@ -524,15 +506,8 @@ namespace WorkflowDesigner.Nodes
         {
             NodeName = "通知节点";
 
-            this.Inputs.Add(new ValueNodeInputViewModel<object>
-            {
-                Name = "输入"
-            });
-
-            this.Outputs.Add(new ValueNodeOutputViewModel<object>
-            {
-                Name = "完成"
-            });
+            this.Inputs.Add(new ValueNodeInputViewModel<object> { Name = "输入" });
+            this.Outputs.Add(new ValueNodeOutputViewModel<object> { Name = "完成" });
         }
 
         public override async Task<WorkflowNodeResult> ExecuteAsync(WorkflowContext context)
@@ -580,6 +555,8 @@ namespace WorkflowDesigner.Nodes
             return errors.Any() ? ValidationResult.Error(errors) : ValidationResult.Success;
         }
     }
+
+    // 这些类可能需要定义，如果还没有的话
     public class WorkflowNodeInputViewModel : NodeInputViewModel
     {
         public WorkflowNodeInputViewModel()
@@ -592,6 +569,7 @@ namespace WorkflowDesigner.Nodes
             this.Name = name;
         }
     }
+
     public class WorkflowNodeOutputViewModel : NodeOutputViewModel
     {
         public WorkflowNodeOutputViewModel()
@@ -604,5 +582,4 @@ namespace WorkflowDesigner.Nodes
             this.Name = name;
         }
     }
-
 }
