@@ -3,7 +3,9 @@
                         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                         xmlns:prism="http://prismlibrary.com/"
                         xmlns:local="clr-namespace:WorkflowDesigner"
-                        xmlns:converters="clr-namespace:WorkflowDesigner.UI.Converters">
+                        xmlns:converters="clr-namespace:WorkflowDesigner.UI.Converters"
+                        xmlns:nodeViews="clr-namespace:WorkflowDesigner.UI.Views.Nodes"
+                        xmlns:nodes="clr-namespace:WorkflowDesigner.Nodes">
     <Application.Resources>
         <ResourceDictionary>
             <!-- 全局转换器 -->
@@ -16,6 +18,31 @@
             <converters:NumberFormatConverter x:Key="NumberFormatConverter"/>
             <converters:EnumToStringConverter x:Key="EnumToStringConverter"/>
             <converters:ColorStringToBrushConverter x:Key="ColorStringToBrushConverter"/>
+
+            <!-- 节点视图模型到视图的映射 -->
+            <DataTemplate DataType="{x:Type nodes:StartNodeViewModel}">
+                <nodeViews:StartNodeView/>
+            </DataTemplate>
+
+            <DataTemplate DataType="{x:Type nodes:EndNodeViewModel}">
+                <nodeViews:EndNodeView/>
+            </DataTemplate>
+
+            <DataTemplate DataType="{x:Type nodes:ApprovalNodeViewModel}">
+                <nodeViews:ApprovalNodeView/>
+            </DataTemplate>
+
+            <DataTemplate DataType="{x:Type nodes:DecisionNodeViewModel}">
+                <nodeViews:DecisionNodeView/>
+            </DataTemplate>
+
+            <DataTemplate DataType="{x:Type nodes:TaskNodeViewModel}">
+                <nodeViews:TaskNodeView/>
+            </DataTemplate>
+
+            <DataTemplate DataType="{x:Type nodes:NotificationNodeViewModel}">
+                <nodeViews:NotificationNodeView/>
+            </DataTemplate>
 
             <!-- 全局样式 -->
             <Style TargetType="Window">

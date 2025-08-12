@@ -1,0 +1,23 @@
+﻿<UserControl x:Class="WorkflowDesigner.UI.Views.Nodes.StartNodeView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Width="120" Height="60">
+    <Border Background="#E8F5E8" BorderBrush="#4CAF50" BorderThickness="2" CornerRadius="8">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Center" Margin="5,3">
+                <TextBlock Text="▶" FontSize="14" Foreground="#4CAF50" Margin="0,0,3,0"/>
+                <TextBlock Text="开始" FontWeight="Bold" FontSize="12" Foreground="#2E7D32"/>
+            </StackPanel>
+
+            <TextBlock Grid.Row="1" Text="{Binding NodeName}" 
+                       FontSize="10" HorizontalAlignment="Center" 
+                       VerticalAlignment="Center" TextWrapping="Wrap"
+                       Margin="3" Foreground="#1B5E20"/>
+        </Grid>
+    </Border>
+</UserControl>

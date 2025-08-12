@@ -154,7 +154,6 @@ namespace WorkflowDesigner.Nodes
             }
         }
     }
-
     // 开始节点
     public class StartNodeViewModel : WorkflowNodeViewModel
     {
@@ -184,7 +183,6 @@ namespace WorkflowDesigner.Nodes
             return ValidationResult.Success;
         }
     }
-
     // 结束节点
     public class EndNodeViewModel : WorkflowNodeViewModel
     {
@@ -213,7 +211,6 @@ namespace WorkflowDesigner.Nodes
             return ValidationResult.Success;
         }
     }
-
     // 审批节点
     public class ApprovalNodeViewModel : WorkflowNodeViewModel
     {
@@ -221,9 +218,7 @@ namespace WorkflowDesigner.Nodes
         private string _approvalContent = "";
         private List<string> _approvers = new List<string>();
         private bool _requireAllApproval = true;
-
         public override WorkflowNodeType NodeType => WorkflowNodeType.Approval;
-
         public string ApprovalTitle
         {
             get => _approvalTitle;
@@ -329,7 +324,6 @@ namespace WorkflowDesigner.Nodes
             return errors.Any() ? ValidationResult.Error(errors) : ValidationResult.Success;
         }
     }
-
     // 判断节点
     public class DecisionNodeViewModel : WorkflowNodeViewModel
     {
@@ -386,7 +380,6 @@ namespace WorkflowDesigner.Nodes
             return errors.Any() ? ValidationResult.Error(errors) : ValidationResult.Success;
         }
     }
-
     // 任务节点
     public class TaskNodeViewModel : WorkflowNodeViewModel
     {
@@ -493,7 +486,6 @@ namespace WorkflowDesigner.Nodes
             return errors.Any() ? ValidationResult.Error(errors) : ValidationResult.Success;
         }
     }
-
     // 通知节点
     public class NotificationNodeViewModel : WorkflowNodeViewModel
     {
@@ -588,7 +580,6 @@ namespace WorkflowDesigner.Nodes
             return errors.Any() ? ValidationResult.Error(errors) : ValidationResult.Success;
         }
     }
-
     public class WorkflowNodeInputViewModel : NodeInputViewModel
     {
         public WorkflowNodeInputViewModel()
@@ -601,7 +592,6 @@ namespace WorkflowDesigner.Nodes
             this.Name = name;
         }
     }
-
     public class WorkflowNodeOutputViewModel : NodeOutputViewModel
     {
         public WorkflowNodeOutputViewModel()
