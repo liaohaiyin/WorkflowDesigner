@@ -100,10 +100,10 @@
                           PanningMode="Both">
 
                 <!-- 设计器画布 -->
-                <Grid x:Name="DesignerCanvas" MinWidth="2000" MinHeight="2000">
+                <Grid x:Name="DesignerCanvas">
 
                     <!-- 网格背景 -->
-                    <Rectangle x:Name="GridBackground" 
+                    <Rectangle x:Name="GridBackground"
                                Fill="{StaticResource GridBrush}"
                                Visibility="{Binding ElementName=ShowGridCheckBox, Path=IsChecked, Converter={StaticResource BooleanToVisibilityConverter}}"/>
 
