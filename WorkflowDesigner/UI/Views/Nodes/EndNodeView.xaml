@@ -1,4 +1,4 @@
-﻿<local:NodeViewBase x:TypeArguments="vm:EndNodeViewModel"
+﻿<local:DraggableNodeViewBase x:TypeArguments="vm:EndNodeViewModel"
                     x:Class="WorkflowDesigner.UI.Views.Nodes.EndNodeView"
                     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -26,4 +26,4 @@
                        Margin="3" Foreground="#B71C1C"/>
         </Grid>
     </Border>
-</local:NodeViewBase>
+</local:DraggableNodeViewBase>

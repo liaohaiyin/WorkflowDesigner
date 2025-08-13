@@ -19,11 +19,15 @@ namespace WorkflowDesigner.UI.Views.Nodes
     /// <summary>
     /// NotificationNodeView.xaml 的交互逻辑
     /// </summary>
-    public partial class NotificationNodeView : NodeViewBase<NotificationNodeViewModel>
+    public partial class NotificationNodeView : DraggableNodeViewBase<NotificationNodeViewModel>
     {
         public NotificationNodeView()
         {
             InitializeComponent();
+        }
+        protected override Brush GetDefaultBorderBrush()
+        {
+            return new SolidColorBrush(Color.FromRgb(96, 125, 139)); // 蓝灰色
         }
     }
 }

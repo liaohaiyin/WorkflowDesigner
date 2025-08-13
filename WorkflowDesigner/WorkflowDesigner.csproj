@@ -300,6 +300,7 @@
     <Compile Include="Infrastructure\Startup\StartupHelper.cs" />
     <Compile Include="Nodes\WorkflowNodeViewModel.cs" />
     <Compile Include="UI\Converters\TypeConverter.cs" />
+    <Compile Include="UI\Views\Nodes\DraggableNodeViewBase.cs" />
     <Compile Include="UI\ViewLocators\NodeViewLocator.cs" />
     <Compile Include="UI\ViewModels\MainWindowViewModel.cs" />
     <Compile Include="UI\ViewModels\OutputPanelViewModel.cs" />
@@ -316,7 +317,6 @@
     <Compile Include="UI\Views\Nodes\EndNodeView.xaml.cs">
       <DependentUpon>EndNodeView.xaml</DependentUpon>
     </Compile>
-    <Compile Include="UI\Views\Nodes\NodeViewBase.cs" />
     <Compile Include="UI\Views\Nodes\NotificationNodeView.xaml.cs">
       <DependentUpon>NotificationNodeView.xaml</DependentUpon>
     </Compile>

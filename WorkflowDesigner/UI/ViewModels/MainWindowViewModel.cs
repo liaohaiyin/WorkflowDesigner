@@ -292,7 +292,7 @@ namespace WorkflowDesigner.UI.ViewModels
             }
         }
 
-        private async void OnOpenWorkflow()
+        private void OnOpenWorkflow()
         {
             try
             {

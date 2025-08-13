@@ -19,11 +19,15 @@ namespace WorkflowDesigner.UI.Views.Nodes
     /// <summary>
     /// DecisionNodeView.xaml 的交互逻辑
     /// </summary>
-    public partial class DecisionNodeView : NodeViewBase<DecisionNodeViewModel>
+    public partial class DecisionNodeView : DraggableNodeViewBase<DecisionNodeViewModel>
     {
         public DecisionNodeView()
         {
             InitializeComponent();
+        }
+        protected override Brush GetDefaultBorderBrush()
+        {
+            return new SolidColorBrush(Color.FromRgb(255, 152, 0)); // 橙色
         }
     }
 }

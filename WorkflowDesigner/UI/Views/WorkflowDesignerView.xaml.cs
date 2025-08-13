@@ -10,10 +10,10 @@ using WorkflowDesigner.Nodes;
 namespace WorkflowDesigner.UI.Views
 {
     public partial class WorkflowDesignerView : UserControl
-    {
+    {        
         private WorkflowDesignerViewModel ViewModel => DataContext as WorkflowDesignerViewModel;
-        private Point _dragStartPoint;
-        private bool _isDragging;
+        //private Point _dragStartPoint;
+        //private bool _isDragging;
         private bool _isNodeDragging;
         private WorkflowNodeViewModel _draggingNode;
         private const double NODE_SELECTION_TOLERANCE = 75; // 节点选择容差（像素）
@@ -25,9 +25,9 @@ namespace WorkflowDesigner.UI.Views
 
             // 设置鼠标事件处理
             MouseMove += OnMouseMove;
-            MouseLeftButtonDown += OnMouseLeftButtonDown;
-            MouseLeftButtonUp += OnMouseLeftButtonUp;
-            MouseRightButtonDown += OnMouseRightButtonDown;
+            //MouseLeftButtonDown += OnMouseLeftButtonDown;
+            //MouseLeftButtonUp += OnMouseLeftButtonUp;
+            //MouseRightButtonDown += OnMouseRightButtonDown;
 
             // 设置键盘事件处理
             KeyDown += OnKeyDown;
@@ -49,7 +49,6 @@ namespace WorkflowDesigner.UI.Views
         }
 
         #region 节点选择和交互
-
         private void OnNodeSelectionChanged(object sender, EventArgs e)
         {
             try
@@ -57,9 +56,8 @@ namespace WorkflowDesigner.UI.Views
                 if (ViewModel?.SelectedNode != null)
                 {
                     UpdateStatusText($"已选择节点: {ViewModel.SelectedNode.NodeName}");
-
                     // 确保选中的节点可见
-                    EnsureNodeVisible(ViewModel.SelectedNode);
+                    //EnsureNodeVisible(ViewModel.SelectedNode);
                 }
                 else
                 {
@@ -84,40 +82,39 @@ namespace WorkflowDesigner.UI.Views
             }
         }
 
-        private void EnsureNodeVisible(WorkflowNodeViewModel node)
-        {
-            if (node == null) return;
+        //private void EnsureNodeVisible(WorkflowNodeViewModel node)
+        //{
+        //    if (node == null) return;
 
-            try
-            {
-                var nodePosition = node.Position;
-                var viewportBounds = new Rect(
-                    DesignerScrollViewer.HorizontalOffset,
-                    DesignerScrollViewer.VerticalOffset,
-                    DesignerScrollViewer.ViewportWidth,
-                    DesignerScrollViewer.ViewportHeight
-                );
+        //    try
+        //    {
+        //        var nodePosition = node.Position;
+        //        var viewportBounds = new Rect(
+        //            DesignerScrollViewer.HorizontalOffset,
+        //            DesignerScrollViewer.VerticalOffset,
+        //            DesignerScrollViewer.ViewportWidth,
+        //            DesignerScrollViewer.ViewportHeight
+        //        );
 
-                // 如果节点不在可视区域内，滚动到节点位置
-                if (!viewportBounds.Contains(nodePosition))
-                {
-                    var centerX = nodePosition.X - DesignerScrollViewer.ViewportWidth / 2;
-                    var centerY = nodePosition.Y - DesignerScrollViewer.ViewportHeight / 2;
+        //        // 如果节点不在可视区域内，滚动到节点位置
+        //        if (!viewportBounds.Contains(nodePosition))
+        //        {
+        //            var centerX = nodePosition.X - DesignerScrollViewer.ViewportWidth / 2;
+        //            var centerY = nodePosition.Y - DesignerScrollViewer.ViewportHeight / 2;
 
-                    DesignerScrollViewer.ScrollToHorizontalOffset(Math.Max(0, centerX));
-                    DesignerScrollViewer.ScrollToVerticalOffset(Math.Max(0, centerY));
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"确保节点可见失败: {ex.Message}");
-            }
-        }
+        //            DesignerScrollViewer.ScrollToHorizontalOffset(Math.Max(0, centerX));
+        //            DesignerScrollViewer.ScrollToVerticalOffset(Math.Max(0, centerY));
+        //        }
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        System.Diagnostics.Debug.WriteLine($"确保节点可见失败: {ex.Message}");
+        //    }
+        //}
 
         #endregion
 
         #region 拖拽功能
-
         private void UserControl_Drop(object sender, DragEventArgs e)
         {
             try
@@ -125,7 +122,7 @@ namespace WorkflowDesigner.UI.Views
                 if (e.Data.GetDataPresent(typeof(ToolboxItemViewModel)))
                 {
                     var toolboxItem = (ToolboxItemViewModel)e.Data.GetData(typeof(ToolboxItemViewModel));
-                    var position = e.GetPosition(NetworkView);
+                    var position = e.GetPosition(networkView);
 
                     // 网格对齐
                     if (SnapToGridCheckBox.IsChecked == true)
@@ -163,67 +160,67 @@ namespace WorkflowDesigner.UI.Views
 
         #region 鼠标事件处理
 
-        private void OnMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
-        {
-            try
-            {
-                // 获取鼠标在NetworkView中的位置
-                var position = e.GetPosition(NetworkView);
-                _dragStartPoint = position;
-                _isDragging = false;
-                _isNodeDragging = false;
+        //private void OnMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        //{
+        //    try
+        //    {
+        //        // 获取鼠标在networkView中的位置
+        //        var position = e.GetPosition(networkView);
+        //        _dragStartPoint = position;
+        //        _isDragging = false;
+        //        _isNodeDragging = false;
 
-                // 查找点击位置的节点
-                var clickedNode = GetNodeAtPosition(position);
+        //        // 查找点击位置的节点
+        //        var clickedNode = GetNodeAtPosition(position);
 
-                if (clickedNode != null)
-                {
-                    // 点击了节点
-                    if (Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
-                    {
-                        // Ctrl+点击：切换选择状态
-                        clickedNode.IsSelected = !clickedNode.IsSelected;
-                        if (clickedNode.IsSelected)
-                        {
-                            ViewModel.SelectedNode = clickedNode;
-                        }
-                    }
-                    else
-                    {
-                        // 普通点击：选择节点
-                        ViewModel?.SelectNode(clickedNode);
-                    }
+        //        if (clickedNode != null)
+        //        {
+        //            // 点击了节点
+        //            if (Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
+        //            {
+        //                // Ctrl+点击：切换选择状态
+        //                clickedNode.IsChecked = !clickedNode.IsChecked;
+        //                if (clickedNode.IsChecked)
+        //                {
+        //                    ViewModel.SelectedNode = clickedNode;
+        //                }
+        //            }
+        //            else
+        //            {
+        //                // 普通点击：选择节点
+        //                ViewModel?.SelectNode(clickedNode);
+        //            }
 
-                    // 准备开始拖拽节点
-                    _draggingNode = clickedNode;
-                    clickedNode.StartDrag();
+        //            // 准备开始拖拽节点
+        //            _draggingNode = clickedNode;
+        //            clickedNode.StartDrag();
 
-                    // 捕获鼠标
-                    CaptureMouse();
-                }
-                else
-                {
-                    // 点击了空白区域，取消选择
-                    if (!Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
-                    {
-                        ViewModel.SelectedNode = null;
-                    }
-                }
+        //            // 捕获鼠标
+        //            CaptureMouse();
+        //        }
+        //        else
+        //        {
+        //            // 点击了空白区域，取消选择
+        //            if (!Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
+        //            {
+        //                ViewModel.SelectedNode = null;
+        //            }
+        //        }
 
-                // 设置焦点以接收键盘事件
-                Focus();
-            }
-            catch (Exception ex)
-            {
-                UpdateStatusText($"鼠标点击处理失败: {ex.Message}");
-            }
-        }
+        //        // 设置焦点以接收键盘事件
+        //        Focus();
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        UpdateStatusText($"鼠标点击处理失败: {ex.Message}");
+        //    }
+        //}
 
         private void OnMouseMove(object sender, MouseEventArgs e)
         {
             try
             {
-                var currentPosition = e.GetPosition(NetworkView);
+                var currentPosition = e.GetPosition(networkView);
 
                 // 更新鼠标位置显示
                 if (MousePositionText != null)
@@ -232,43 +229,43 @@ namespace WorkflowDesigner.UI.Views
                 }
 
                 // 处理节点拖拽
-                if (e.LeftButton == MouseButtonState.Pressed && _draggingNode != null)
-                {
-                    var dragVector = currentPosition - _dragStartPoint;
-                    var dragDistance = Math.Sqrt(dragVector.X * dragVector.X + dragVector.Y * dragVector.Y);
+                //if (e.LeftButton == MouseButtonState.Pressed && _draggingNode != null)
+                //{
+                //    var dragVector = currentPosition - _dragStartPoint;
+                //    var dragDistance = Math.Sqrt(dragVector.X * dragVector.X + dragVector.Y * dragVector.Y);
 
-                    // 开始拖拽（鼠标移动超过阈值）
-                    if (!_isNodeDragging && dragDistance > 5)
-                    {
-                        _isNodeDragging = true;
-                        ViewModel?.StartDrag(_dragStartPoint);
-                        UpdateStatusText($"开始拖拽节点: {_draggingNode.NodeName}");
-                    }
+                //    // 开始拖拽（鼠标移动超过阈值）
+                //    if (!_isNodeDragging && dragDistance > 5)
+                //    {
+                //        _isNodeDragging = true;
+                //        ViewModel?.StartDrag(_dragStartPoint);
+                //        UpdateStatusText($"开始拖拽节点: {_draggingNode.NodeName}");
+                //    }
 
-                    // 更新拖拽
-                    if (_isNodeDragging)
-                    {
-                        // 网格对齐
-                        var newPosition = currentPosition;
-                        if (SnapToGridCheckBox?.IsChecked == true)
-                        {
-                            var gridSize = 20;
-                            newPosition.X = Math.Round(newPosition.X / gridSize) * gridSize;
-                            newPosition.Y = Math.Round(newPosition.Y / gridSize) * gridSize;
-                        }
+                //    // 更新拖拽
+                //    if (_isNodeDragging)
+                //    {
+                //        // 网格对齐
+                //        var newPosition = currentPosition;
+                //        if (SnapToGridCheckBox?.IsChecked == true)
+                //        {
+                //            var gridSize = 20;
+                //            newPosition.X = Math.Round(newPosition.X / gridSize) * gridSize;
+                //            newPosition.Y = Math.Round(newPosition.Y / gridSize) * gridSize;
+                //        }
 
-                        // 确保节点不会被拖到负坐标
-                        newPosition.X = Math.Max(0, newPosition.X);
-                        newPosition.Y = Math.Max(0, newPosition.Y);
+                //        // 确保节点不会被拖到负坐标
+                //        newPosition.X = Math.Max(0, newPosition.X);
+                //        newPosition.Y = Math.Max(0, newPosition.Y);
 
-                        ViewModel?.MoveNode(_draggingNode, newPosition);
-                    }
-                }
-                else
-                {
-                    // 更新节点悬停状态
-                    UpdateNodeHoverState(currentPosition);
-                }
+                //        ViewModel?.MoveNode(_draggingNode, newPosition);
+                //    }
+                //}
+                //else
+                //{
+                //    // 更新节点悬停状态
+                //    UpdateNodeHoverState(currentPosition);
+                //}
             }
             catch (Exception ex)
             {
@@ -276,39 +273,39 @@ namespace WorkflowDesigner.UI.Views
             }
         }
 
-        private void OnMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
-        {
-            try
-            {
-                var endPosition = e.GetPosition(NetworkView);
+        //private void OnMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        //{
+        //    try
+        //    {
+        //        var endPosition = e.GetPosition(networkView);
 
-                if (_isNodeDragging && _draggingNode != null)
-                {
-                    // 结束节点拖拽
-                    ViewModel?.EndDrag(endPosition);
-                    _draggingNode.EndDrag();
-                    UpdateStatusText($"节点拖拽完成: {_draggingNode.NodeName}");
-                }
+        //        if (_isNodeDragging && _draggingNode != null)
+        //        {
+        //            // 结束节点拖拽
+        //            ViewModel?.EndDrag(endPosition);
+        //            _draggingNode.EndDrag();
+        //            UpdateStatusText($"节点拖拽完成: {_draggingNode.NodeName}");
+        //        }
 
-                // 清理拖拽状态
-                _isDragging = false;
-                _isNodeDragging = false;
-                _draggingNode = null;
+        //        // 清理拖拽状态
+        //        _isDragging = false;
+        //        _isNodeDragging = false;
+        //        _draggingNode = null;
 
-                // 释放鼠标捕获
-                ReleaseMouseCapture();
-            }
-            catch (Exception ex)
-            {
-                UpdateStatusText($"鼠标释放处理失败: {ex.Message}");
-            }
-        }
+        //        // 释放鼠标捕获
+        //        ReleaseMouseCapture();
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        UpdateStatusText($"鼠标释放处理失败: {ex.Message}");
+        //    }
+        //}
 
         private void OnMouseRightButtonDown(object sender, MouseButtonEventArgs e)
         {
             try
             {
-                var position = e.GetPosition(NetworkView);
+                var position = e.GetPosition(networkView);
                 var rightClickedNode = GetNodeAtPosition(position);
 
                 if (rightClickedNode != null)
@@ -709,23 +706,23 @@ namespace WorkflowDesigner.UI.Views
             {
                 if (ViewModel?.Network?.Nodes?.Items?.Any() == true)
                 {
-                    var bounds = CalculateNodesBounds();
-                    if (bounds.Width > 0 && bounds.Height > 0)
-                    {
-                        var viewportWidth = DesignerScrollViewer.ViewportWidth - 40;
-                        var viewportHeight = DesignerScrollViewer.ViewportHeight - 40;
+                    //var bounds = CalculateNodesBounds();
+                    //if (bounds.Width > 0 && bounds.Height > 0)
+                    //{
+                    //    var viewportWidth = DesignerScrollViewer.ViewportWidth - 40;
+                    //    var viewportHeight = DesignerScrollViewer.ViewportHeight - 40;
 
-                        var scaleX = viewportWidth / bounds.Width;
-                        var scaleY = viewportHeight / bounds.Height;
-                        var scale = Math.Min(scaleX, scaleY) * 0.9;
+                    //    var scaleX = viewportWidth / bounds.Width;
+                    //    var scaleY = viewportHeight / bounds.Height;
+                    //    var scale = Math.Min(scaleX, scaleY) * 0.9;
 
-                        ZoomSlider.Value = Math.Max(0.1, Math.Min(3.0, scale));
+                    //    ZoomSlider.Value = Math.Max(0.1, Math.Min(3.0, scale));
 
-                        DesignerScrollViewer.ScrollToHorizontalOffset(bounds.X - 20);
-                        DesignerScrollViewer.ScrollToVerticalOffset(bounds.Y - 20);
+                    //    DesignerScrollViewer.ScrollToHorizontalOffset(bounds.X - 20);
+                    //    DesignerScrollViewer.ScrollToVerticalOffset(bounds.Y - 20);
 
-                        UpdateStatusText("已适合窗口大小");
-                    }
+                    //    UpdateStatusText("已适合窗口大小");
+                    //}
                 }
                 else
                 {
@@ -748,26 +745,26 @@ namespace WorkflowDesigner.UI.Views
         {
             try
             {
-                if (ViewModel?.Network?.Nodes?.Items?.Any() == true)
-                {
-                    var bounds = CalculateNodesBounds();
-                    var centerX = bounds.X + bounds.Width / 2;
-                    var centerY = bounds.Y + bounds.Height / 2;
+                //if (ViewModel?.Network?.Nodes?.Items?.Any() == true)
+                //{
+                //    var bounds = CalculateNodesBounds();
+                //    var centerX = bounds.X + bounds.Width / 2;
+                //    var centerY = bounds.Y + bounds.Height / 2;
 
-                    var viewportCenterX = DesignerScrollViewer.ViewportWidth / 2;
-                    var viewportCenterY = DesignerScrollViewer.ViewportHeight / 2;
+                //    var viewportCenterX = DesignerScrollViewer.ViewportWidth / 2;
+                //    var viewportCenterY = DesignerScrollViewer.ViewportHeight / 2;
 
-                    DesignerScrollViewer.ScrollToHorizontalOffset(centerX - viewportCenterX);
-                    DesignerScrollViewer.ScrollToVerticalOffset(centerY - viewportCenterY);
+                //    DesignerScrollViewer.ScrollToHorizontalOffset(centerX - viewportCenterX);
+                //    DesignerScrollViewer.ScrollToVerticalOffset(centerY - viewportCenterY);
 
-                    UpdateStatusText("视图已居中");
-                }
-                else
-                {
-                    DesignerScrollViewer.ScrollToHorizontalOffset(1000 - DesignerScrollViewer.ViewportWidth / 2);
-                    DesignerScrollViewer.ScrollToVerticalOffset(1000 - DesignerScrollViewer.ViewportHeight / 2);
-                    UpdateStatusText("视图已居中");
-                }
+                //    UpdateStatusText("视图已居中");
+                //}
+                //else
+                //{
+                //    DesignerScrollViewer.ScrollToHorizontalOffset(1000 - DesignerScrollViewer.ViewportWidth / 2);
+                //    DesignerScrollViewer.ScrollToVerticalOffset(1000 - DesignerScrollViewer.ViewportHeight / 2);
+                //    UpdateStatusText("视图已居中");
+                //}
             }
             catch (Exception ex)
             {
@@ -777,10 +774,10 @@ namespace WorkflowDesigner.UI.Views
 
         private void ZoomSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
-            if (NetworkView != null)
+            if (networkView != null)
             {
                 var scaleTransform = new ScaleTransform(e.NewValue, e.NewValue);
-                NetworkView.RenderTransform = scaleTransform;
+                networkView.RenderTransform = scaleTransform;
                 UpdateStatusText($"缩放: {e.NewValue:P0}");
             }
         }
@@ -886,5 +883,6 @@ namespace WorkflowDesigner.UI.Views
         }
 
         #endregion
+
     }
 }

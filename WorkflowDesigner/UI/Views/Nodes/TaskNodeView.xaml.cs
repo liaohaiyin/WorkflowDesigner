@@ -19,11 +19,15 @@ namespace WorkflowDesigner.UI.Views.Nodes
     /// <summary>
     /// TaskNodeView.xaml 的交互逻辑
     /// </summary>
-    public partial class TaskNodeView : NodeViewBase<TaskNodeViewModel>
+    public partial class TaskNodeView : DraggableNodeViewBase<TaskNodeViewModel>
     {
         public TaskNodeView()
         {
             InitializeComponent();
+        }
+        protected override Brush GetDefaultBorderBrush()
+        {
+            return new SolidColorBrush(Color.FromRgb(156, 39, 176)); // 紫色
         }
     }
 }

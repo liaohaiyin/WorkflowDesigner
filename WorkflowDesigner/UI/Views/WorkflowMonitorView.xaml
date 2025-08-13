@@ -40,7 +40,7 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height="200"/>
+            <RowDefinition Height="300"/>
         </Grid.RowDefinitions>
 
         <!-- 工具栏 -->
@@ -203,7 +203,6 @@
 
         <!-- 详细信息面板 -->
         <TabControl Grid.Row="3" Background="#FAFAFA">
-
             <!-- 基本信息 -->
             <TabItem Header="基本信息">
                 <Grid Margin="10" DataContext="{Binding SelectedWorkflow}">

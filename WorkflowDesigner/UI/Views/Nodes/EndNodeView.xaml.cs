@@ -19,11 +19,15 @@ namespace WorkflowDesigner.UI.Views.Nodes
     /// <summary>
     /// EndNodeView.xaml 的交互逻辑
     /// </summary>
-    public partial class EndNodeView : NodeViewBase<EndNodeViewModel>
+    public partial class EndNodeView : DraggableNodeViewBase<EndNodeViewModel>
     {
         public EndNodeView()
         {
             InitializeComponent();
+        }
+        protected override Brush GetDefaultBorderBrush()
+        {
+            return new SolidColorBrush(Color.FromRgb(244, 67, 54)); // 红色
         }
     }
 }

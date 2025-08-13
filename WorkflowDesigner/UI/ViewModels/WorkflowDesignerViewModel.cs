@@ -1,6 +1,8 @@
 ﻿using DynamicData;
 using Newtonsoft.Json;
+using NLog;
 using NodeNetwork.ViewModels;
+using NodeNetwork.Views;
 using Prism.Mvvm;
 using ReactiveUI;
 using System;
@@ -15,7 +17,6 @@ using WorkflowDesigner.Core.Services;
 using WorkflowDesigner.Engine;
 using WorkflowDesigner.Nodes;
 using WorkflowDesigner.UI.ViewModels;
-using NLog;
 
 namespace WorkflowDesigner.UI.ViewModels
 {
@@ -69,13 +70,13 @@ namespace WorkflowDesigner.UI.ViewModels
                     // 更新旧节点的选择状态
                     if (oldNode != null)
                     {
-                        oldNode.IsSelected = false;
+                        oldNode.IsChecked = false;
                     }
 
                     // 更新新节点的选择状态
                     if (_selectedNode != null)
                     {
-                        _selectedNode.IsSelected = true;
+                        _selectedNode.IsChecked = true;
                     }
 
                     // 通知节点选择变化
@@ -241,7 +242,7 @@ namespace WorkflowDesigner.UI.ViewModels
         private void SetupNodeEventHandlers(WorkflowNodeViewModel node)
         {
             // 设置节点点击事件
-            node.WhenAnyValue(x => x.IsSelected)
+            node.WhenAnyValue(x => x.IsChecked)
                 .Subscribe(isSelected =>
                 {
                     if (isSelected && SelectedNode != node)

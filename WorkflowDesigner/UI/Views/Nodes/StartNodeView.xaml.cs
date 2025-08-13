@@ -19,11 +19,15 @@ namespace WorkflowDesigner.UI.Views.Nodes
     /// <summary>
     /// StartNodeView.xaml 的交互逻辑
     /// </summary>
-    public partial class StartNodeView : NodeViewBase<StartNodeViewModel>
+    public partial class StartNodeView : DraggableNodeViewBase<StartNodeViewModel>
     {
         public StartNodeView()
         {
             InitializeComponent();
+        }
+        protected override Brush GetDefaultBorderBrush()
+        {
+            return new SolidColorBrush(Color.FromRgb(76, 175, 80)); // 绿色
         }
     }
 }

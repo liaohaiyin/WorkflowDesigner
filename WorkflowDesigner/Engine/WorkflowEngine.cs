@@ -312,10 +312,9 @@ namespace WorkflowDesigner.Engine
 
         private async Task<WorkflowNodeResult> ExecuteNodeWithTimeout(WorkflowNodeViewModel node, WorkflowContext context, CancellationToken cancellationToken)
         {
-            var task = node.ExecuteAsync(context);
-            await task.ConfigureAwait(false);
+            var task = await node.ExecuteAsync(context);
             cancellationToken.ThrowIfCancellationRequested();
-            return task.Result;
+            return task;
         }
 
         private List<WorkflowNodeViewModel> DeserializeNodes(string nodesJson)

@@ -94,33 +94,25 @@
 
         <!-- 设计器主区域 -->
         <Border Grid.Row="1" BorderBrush="#E0E0E0" BorderThickness="1">
-            <ScrollViewer x:Name="DesignerScrollViewer"
-                          HorizontalScrollBarVisibility="Auto" 
-                          VerticalScrollBarVisibility="Auto"
-                          PanningMode="Both">
+            <Grid x:Name="DesignerCanvas">
+                <!-- 网格背景 -->
+                <Rectangle x:Name="GridBackground"
+                Fill="{StaticResource GridBrush}"
+                Visibility="{Binding ElementName=ShowGridCheckBox, Path=IsChecked, Converter={StaticResource BooleanToVisibilityConverter}}"/>
 
-                <!-- 设计器画布 -->
-                <Grid x:Name="DesignerCanvas">
+                <!-- NodeNetwork视图 -->
+                <nodenetwork:NetworkView  Grid.Row="1" x:Name="networkView" 
+                             ViewModel="{Binding Network}" 
+                             Background="Transparent"
+                             HorizontalAlignment="Stretch"
+                             VerticalAlignment="Stretch"/>
 
-                    <!-- 网格背景 -->
-                    <Rectangle x:Name="GridBackground"
-                               Fill="{StaticResource GridBrush}"
-                               Visibility="{Binding ElementName=ShowGridCheckBox, Path=IsChecked, Converter={StaticResource BooleanToVisibilityConverter}}"/>
-
-                    <!-- NodeNetwork视图 -->
-                    <nodenetwork:NetworkView x:Name="NetworkView" 
-                                            ViewModel="{Binding Network}" 
-                                            Background="Transparent"
-                                            HorizontalAlignment="Stretch"
-                                            VerticalAlignment="Stretch"/>
-
-                    <!-- 选择框 -->
-                    <Rectangle x:Name="SelectionRectangle" 
-                               Fill="LightBlue" Opacity="0.3" 
-                               Stroke="Blue" StrokeThickness="1" 
-                               Visibility="Collapsed"/>
-                </Grid>
-            </ScrollViewer>
+                <!-- 选择框 -->
+                <Rectangle x:Name="SelectionRectangle" 
+                           Fill="LightBlue" Opacity="0.3" 
+                           Stroke="Blue" StrokeThickness="1" 
+                           Visibility="Collapsed"/>
+            </Grid>
         </Border>
 
         <!-- 状态栏 -->

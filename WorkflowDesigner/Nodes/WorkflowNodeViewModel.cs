@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Media;
 using WorkflowDesigner.Core.Interfaces;
@@ -95,7 +96,7 @@ namespace WorkflowDesigner.Nodes
         /// <summary>
         /// 节点是否被选中
         /// </summary>
-        public bool IsSelected
+        public bool IsChecked
         {
             get => _isSelected;
             set
@@ -208,7 +209,7 @@ namespace WorkflowDesigner.Nodes
         {
             get
             {
-                if (IsSelected)
+                if (IsChecked)
                     return new SolidColorBrush(System.Windows.Media.Color.FromRgb(33, 150, 243)); // 蓝色选中边框
                 if (IsHovered)
                     return new SolidColorBrush(System.Windows.Media.Color.FromRgb(76, 175, 80)); // 绿色悬停边框
@@ -219,12 +220,12 @@ namespace WorkflowDesigner.Nodes
         /// <summary>
         /// 节点边框厚度
         /// </summary>
-        public int NodeBorderThickness => IsSelected ? 3 : 2;
+        public int NodeBorderThickness => IsChecked ? 3 : 2;
 
         /// <summary>
         /// 选择状态透明度
         /// </summary>
-        public double SelectionOpacity => IsSelected ? 1.0 : 0.85;
+        public double SelectionOpacity => IsChecked ? 1.0 : 0.85;
 
         /// <summary>
         /// 悬停状态透明度
@@ -328,7 +329,7 @@ namespace WorkflowDesigner.Nodes
         /// </summary>
         public virtual void OnMouseClick()
         {
-            IsSelected = !IsSelected;
+            IsChecked = !IsChecked;
         }
 
         /// <summary>
@@ -587,14 +588,14 @@ namespace WorkflowDesigner.Nodes
 
         protected override Brush GetDefaultBorderBrush()
         {
-            return new SolidColorBrush(System.Windows.Media.Color.FromRgb(255, 152, 0)); // 橙色
+            return new SolidColorBrush(Color.FromRgb(255, 152, 0)); // 橙色
         }
 
         public override async Task<WorkflowNodeResult> ExecuteAsync(WorkflowContext context)
         {
             var conditionEvaluator = new ConditionEvaluator();
             var result = conditionEvaluator.Evaluate(ConditionExpression, context.Data);
-
+            await Task.Delay(1);
             return new WorkflowNodeResult
             {
                 Success = true,

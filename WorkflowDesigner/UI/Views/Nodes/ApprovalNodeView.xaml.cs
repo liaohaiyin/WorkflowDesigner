@@ -19,11 +19,15 @@ namespace WorkflowDesigner.UI.Views.Nodes
     /// <summary>
     /// ApprovalNodeView.xaml 的交互逻辑
     /// </summary>
-    public partial class ApprovalNodeView : NodeViewBase<ApprovalNodeViewModel>
+    public partial class ApprovalNodeView : DraggableNodeViewBase<ApprovalNodeViewModel>
     {
         public ApprovalNodeView()
         {
             InitializeComponent();
+        }
+        protected override Brush GetDefaultBorderBrush()
+        {
+            return new SolidColorBrush(Color.FromRgb(33, 150, 243)); // 蓝色
         }
     }
 }
