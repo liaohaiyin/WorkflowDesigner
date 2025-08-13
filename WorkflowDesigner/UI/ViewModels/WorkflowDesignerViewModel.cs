@@ -215,7 +215,7 @@ namespace WorkflowDesigner.UI.ViewModels
             }
         }
 
-        public async Task LoadWorkflowAsync(WorkflowDefinition definition)
+        public void LoadWorkflow(WorkflowDefinition definition)
         {
             try
             {
@@ -226,7 +226,6 @@ namespace WorkflowDesigner.UI.ViewModels
 
                 Network.Nodes.Clear();
                 Network.Connections.Clear();
-
                 // 反序列化节点
                 if (!string.IsNullOrEmpty(definition.NodesJson))
                 {
@@ -242,7 +241,7 @@ namespace WorkflowDesigner.UI.ViewModels
                     }
                 }
 
-                // 反序列化连接
+                //反序列化连接
                 if (!string.IsNullOrEmpty(definition.ConnectionsJson))
                 {
                     var connections = JsonConvert.DeserializeObject<List<WorkflowConnection>>(definition.ConnectionsJson);

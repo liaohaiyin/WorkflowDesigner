@@ -17,7 +17,7 @@ using WorkflowDesigner.Nodes;
 
 namespace WorkflowDesigner.Nodes
 {
-    // 修复版本的工作流节点基类
+    // 工作流节点基类
     public abstract class WorkflowNodeViewModel : NodeViewModel, INotifyPropertyChanged
     {
         private WorkflowNodeStatus _status = WorkflowNodeStatus.Pending;
@@ -351,7 +351,7 @@ namespace WorkflowDesigner.Nodes
         public override async Task<WorkflowNodeResult> ExecuteAsync(WorkflowContext context)
         {
             var conditionEvaluator = new ConditionEvaluator();
-            var result = await conditionEvaluator.EvaluateAsync(ConditionExpression, context.Data);
+            var result = conditionEvaluator.Evaluate(ConditionExpression, context.Data);
 
             return new WorkflowNodeResult
             {

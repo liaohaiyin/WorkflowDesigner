@@ -309,7 +309,7 @@ namespace WorkflowDesigner.UI.ViewModels
 
                     if (DesignerViewModel != null)
                     {
-                        await DesignerViewModel.LoadWorkflowAsync(workflow);
+                        DesignerViewModel.LoadWorkflow(workflow);
                     }
 
                     CurrentWorkflow = workflow;

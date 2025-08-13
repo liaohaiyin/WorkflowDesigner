@@ -5,9 +5,7 @@ using System.Windows.Data;
 using System.Windows.Media;
 using WorkflowDesigner.Core.Models;
 using WorkflowDesigner.UI.ViewModels;
-// ============================================================================
-// 2. 其他常用转换器
-// ============================================================================
+
 namespace WorkflowDesigner.UI.Converters
 {
     public class MessageTypeToStyleConverter : IValueConverter

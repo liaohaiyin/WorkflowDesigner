@@ -33,7 +33,7 @@
 
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="50"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
@@ -71,12 +71,12 @@
                 <MenuItem Header="暂停(_P)" Command="{Binding PauseWorkflowCommand}"/>
                 <MenuItem Header="停止(_T)" Command="{Binding StopWorkflowCommand}"/>
             </MenuItem>
-            <MenuItem Header="视图(_V)">
+            <!--<MenuItem Header="视图(_V)">
                 <MenuItem Header="工具箱(_T)" IsCheckable="True" IsChecked="{Binding IsToolboxVisible}"/>
                 <MenuItem Header="属性(_P)" IsCheckable="True" IsChecked="{Binding IsPropertyPanelVisible}"/>
                 <MenuItem Header="输出(_O)" IsCheckable="True" IsChecked="{Binding IsOutputPanelVisible}"/>
                 <MenuItem Header="监控(_M)" IsCheckable="True" IsChecked="{Binding IsMonitorPanelVisible}"/>
-            </MenuItem>
+            </MenuItem>-->
         </Menu>
 
         <!-- 工具栏 -->
@@ -85,6 +85,12 @@
                 <StackPanel Orientation="Horizontal">
                     <TextBlock Text="📄" FontSize="14" Margin="0,0,4,0"/>
                     <TextBlock Text="新建"/>
+                </StackPanel>
+            </Button>
+            <Button Command="{Binding OpenWorkflowCommand}" ToolTip="打开工作流">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="📂" FontSize="14" Margin="0,0,4,0"/>
+                    <TextBlock Text="打开"/>
                 </StackPanel>
             </Button>
             <Button Command="{Binding SaveWorkflowCommand}" ToolTip="保存工作流">
@@ -143,14 +149,14 @@
                     <!-- 左侧工具箱面板 -->
                     <dock:LayoutAnchorablePane x:Name="leftPane" DockWidth="250">
                         <dock:LayoutAnchorable x:Name="toolboxAnchorable"
-                                             Title="🔧 工具箱" 
-                                             ContentId="toolbox" 
-                                             CanClose="False" 
-                                             CanFloat="True" 
-                                             CanHide="True"
-                                             CanAutoHide="True">
+                                               Title="🔧 工具箱" 
+                                               ContentId="toolbox" 
+                                               CanClose="False" 
+                                               CanFloat="True" 
+                                               CanHide="True"
+                                               CanAutoHide="True">
                             <local:ToolboxView x:Name="toolboxView" 
-                                             DataContext="{Binding ToolboxViewModel}"/>
+                                               DataContext="{Binding ToolboxViewModel}"/>
                         </dock:LayoutAnchorable>
                     </dock:LayoutAnchorablePane>
 
@@ -160,10 +166,10 @@
                         <!-- 上部：设计器文档区域 -->
                         <dock:LayoutDocumentPane x:Name="documentPane">
                             <dock:LayoutDocument x:Name="designerDocument"
-                                               Title="⚙ 工作流设计器" 
-                                               ContentId="designer" 
-                                               CanClose="False"
-                                               CanFloat="False">
+                                                 Title="⚙ 工作流设计器"
+                                                 ContentId="designer"
+                                                 CanClose="False"
+                                                 CanFloat="False">
                                 <local:WorkflowDesignerView x:Name="designerView"
                                                           DataContext="{Binding DesignerViewModel}"/>
                             </dock:LayoutDocument>
@@ -172,22 +178,20 @@
                         <!-- 下部：输出面板 -->
                         <dock:LayoutAnchorablePane x:Name="bottomPane" DockHeight="200">
                             <dock:LayoutAnchorable x:Name="outputAnchorable"
-                                                 Title="📝 输出" 
-                                                 ContentId="output" 
-                                                 CanClose="False" 
-                                                 CanFloat="True" 
-                                                 CanHide="True"
-                                                 CanAutoHide="True">
+                                                   Title="📝 输出"
+                                                   ContentId="output"
+                                                   CanClose="False"
+                                                   CanFloat="True"
+                                                   CanHide="True"
+                                                   CanAutoHide="True">
                                 <local:OutputPanelView x:Name="outputView"
                                                      DataContext="{Binding OutputPanelViewModel}"/>
                             </dock:LayoutAnchorable>
                         </dock:LayoutAnchorablePane>
-
                     </dock:LayoutPanel>
 
                     <!-- 右侧面板 -->
                     <dock:LayoutAnchorablePane x:Name="rightPane" DockWidth="300">
-
                         <!-- 属性面板 -->
                         <dock:LayoutAnchorable x:Name="propertyAnchorable"
                                              Title="🔧 属性" 

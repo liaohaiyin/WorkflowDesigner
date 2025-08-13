@@ -419,7 +419,7 @@ namespace WorkflowDesigner.Engine
     // 条件表达式计算器
     public class ConditionEvaluator
     {
-        public async Task<bool> EvaluateAsync(string expression, Dictionary<string, object> data)
+        public bool Evaluate(string expression, Dictionary<string, object> data)
         {
             // 简单的表达式计算器实现
             // 在实际项目中可以使用更复杂的表达式引擎，如Dynamic LINQ
@@ -491,7 +491,7 @@ namespace WorkflowDesigner.Engine
 
                 return true;
             }
-            catch (Exception ex)
+            catch
             {
                 return false;
             }

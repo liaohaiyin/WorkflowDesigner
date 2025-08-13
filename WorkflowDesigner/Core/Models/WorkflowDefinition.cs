@@ -2,9 +2,6 @@
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace WorkflowDesigner.Core.Models
 {
@@ -103,7 +100,7 @@ namespace WorkflowDesigner.Core.Models
         [NotMapped]
         public bool HasError => !string.IsNullOrEmpty(ErrorMessage);
 
-        // 实际运行时长（以分钟为单位）- 不映射到数据库
+        // 实际运行时长（以分钟为单位）
         [NotMapped]
         public double DurationInMinutes
         {
@@ -114,7 +111,7 @@ namespace WorkflowDesigner.Core.Models
             }
         }
 
-        // 实际运行时长（以小时为单位）- 不映射到数据库
+        // 实际运行时长（以小时为单位）
         [NotMapped]
         public double DurationInHours
         {
