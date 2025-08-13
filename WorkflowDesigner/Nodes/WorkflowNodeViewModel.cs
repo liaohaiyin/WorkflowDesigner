@@ -26,12 +26,17 @@ namespace WorkflowDesigner.Nodes
         private string _executorId = "";
         private string _executorRole = "";
         private TimeSpan? _timeoutDuration;
+        private bool _isSelected = false;
+        private bool _isHovered = false;
+        private bool _isDragging = false;
 
         public WorkflowNodeViewModel()
         {
-            // NodeNetwork 库的端口集合通过继承获得
-            // 不需要重新初始化 Inputs 和 Outputs
+            // 设置默认的允许多输入状态
+            AllowMultipleInputs = false;
         }
+
+        #region 基本属性
 
         public string NodeId { get; set; } = Guid.NewGuid().ToString();
 
@@ -56,6 +61,7 @@ namespace WorkflowDesigner.Nodes
             {
                 this.RaiseAndSetIfChanged(ref _status, value);
                 this.RaisePropertyChanged(nameof(StatusBrush));
+                this.RaisePropertyChanged(nameof(StatusText));
             }
         }
 
@@ -82,7 +88,70 @@ namespace WorkflowDesigner.Nodes
 
         public Dictionary<string, object> NodeData { get; set; } = new Dictionary<string, object>();
 
-        // 节点状态颜色
+        #endregion
+
+        #region 选择和交互状态
+
+        /// <summary>
+        /// 节点是否被选中
+        /// </summary>
+        public bool IsSelected
+        {
+            get => _isSelected;
+            set
+            {
+                if (this.RaiseAndSetIfChanged(ref _isSelected, value))
+                {
+                    this.RaisePropertyChanged(nameof(NodeBorderBrush));
+                    this.RaisePropertyChanged(nameof(NodeBorderThickness));
+                    this.RaisePropertyChanged(nameof(SelectionOpacity));
+                }
+            }
+        }
+
+        /// <summary>
+        /// 鼠标是否悬停在节点上
+        /// </summary>
+        public bool IsHovered
+        {
+            get => _isHovered;
+            set
+            {
+                if (this.RaiseAndSetIfChanged(ref _isHovered, value))
+                {
+                    this.RaisePropertyChanged(nameof(NodeBorderBrush));
+                    this.RaisePropertyChanged(nameof(HoverOpacity));
+                }
+            }
+        }
+
+        /// <summary>
+        /// 节点是否正在被拖拽
+        /// </summary>
+        public bool IsDragging
+        {
+            get => _isDragging;
+            set
+            {
+                if (this.RaiseAndSetIfChanged(ref _isDragging, value))
+                {
+                    this.RaisePropertyChanged(nameof(DragOpacity));
+                }
+            }
+        }
+
+        /// <summary>
+        /// 是否允许多个输入连接
+        /// </summary>
+        public virtual bool AllowMultipleInputs { get; protected set; } = false;
+
+        #endregion
+
+        #region 视觉属性
+
+        /// <summary>
+        /// 节点状态颜色
+        /// </summary>
         public Brush StatusBrush
         {
             get
@@ -97,17 +166,97 @@ namespace WorkflowDesigner.Nodes
                         return Brushes.Red;
                     case WorkflowNodeStatus.Timeout:
                         return Brushes.Purple;
-                    default:
+                    case WorkflowNodeStatus.Skipped:
                         return Brushes.Gray;
+                    default:
+                        return Brushes.LightGray;
                 }
             }
         }
+
+        /// <summary>
+        /// 节点状态文本
+        /// </summary>
+        public string StatusText
+        {
+            get
+            {
+                switch (Status)
+                {
+                    case WorkflowNodeStatus.Pending:
+                        return "待处理";
+                    case WorkflowNodeStatus.InProgress:
+                        return "进行中";
+                    case WorkflowNodeStatus.Completed:
+                        return "已完成";
+                    case WorkflowNodeStatus.Failed:
+                        return "失败";
+                    case WorkflowNodeStatus.Skipped:
+                        return "跳过";
+                    case WorkflowNodeStatus.Timeout:
+                        return "超时";
+                    default:
+                        return "未知";
+                }
+            }
+        }
+
+        /// <summary>
+        /// 节点边框画刷
+        /// </summary>
+        public Brush NodeBorderBrush
+        {
+            get
+            {
+                if (IsSelected)
+                    return new SolidColorBrush(System.Windows.Media.Color.FromRgb(33, 150, 243)); // 蓝色选中边框
+                if (IsHovered)
+                    return new SolidColorBrush(System.Windows.Media.Color.FromRgb(76, 175, 80)); // 绿色悬停边框
+                return GetDefaultBorderBrush();
+            }
+        }
+
+        /// <summary>
+        /// 节点边框厚度
+        /// </summary>
+        public int NodeBorderThickness => IsSelected ? 3 : 2;
+
+        /// <summary>
+        /// 选择状态透明度
+        /// </summary>
+        public double SelectionOpacity => IsSelected ? 1.0 : 0.85;
+
+        /// <summary>
+        /// 悬停状态透明度
+        /// </summary>
+        public double HoverOpacity => IsHovered ? 1.0 : 0.9;
+
+        /// <summary>
+        /// 拖拽状态透明度
+        /// </summary>
+        public double DragOpacity => IsDragging ? 0.7 : 1.0;
+
+        /// <summary>
+        /// 获取默认边框画刷（由子类重写以提供不同的颜色）
+        /// </summary>
+        protected virtual Brush GetDefaultBorderBrush()
+        {
+            return new SolidColorBrush(System.Windows.Media.Color.FromRgb(158, 158, 158)); // 默认灰色
+        }
+
+        #endregion
+
+        #region 抽象方法
 
         // 抽象方法 - 执行节点逻辑
         public abstract Task<WorkflowNodeResult> ExecuteAsync(WorkflowContext context);
 
         // 抽象方法 - 验证节点配置
         public abstract ValidationResult ValidateConfiguration();
+
+        #endregion
+
+        #region 序列化方法
 
         // 将节点数据序列化为JSON
         public virtual string SerializeNodeData()
@@ -153,7 +302,55 @@ namespace WorkflowDesigner.Nodes
                 this.Position = new System.Windows.Point((double)data.Position.X, (double)data.Position.Y);
             }
         }
+
+        #endregion
+
+        #region 交互方法
+
+        /// <summary>
+        /// 处理鼠标进入事件
+        /// </summary>
+        public virtual void OnMouseEnter()
+        {
+            IsHovered = true;
+        }
+
+        /// <summary>
+        /// 处理鼠标离开事件
+        /// </summary>
+        public virtual void OnMouseLeave()
+        {
+            IsHovered = false;
+        }
+
+        /// <summary>
+        /// 处理鼠标点击事件
+        /// </summary>
+        public virtual void OnMouseClick()
+        {
+            IsSelected = !IsSelected;
+        }
+
+        /// <summary>
+        /// 开始拖拽操作
+        /// </summary>
+        public virtual void StartDrag()
+        {
+            IsDragging = true;
+        }
+
+        /// <summary>
+        /// 结束拖拽操作
+        /// </summary>
+        public virtual void EndDrag()
+        {
+            IsDragging = false;
+        }
+
+        #endregion
     }
+
+    #region 具体节点实现
 
     // 开始节点
     public class StartNodeViewModel : WorkflowNodeViewModel
@@ -170,6 +367,11 @@ namespace WorkflowDesigner.Nodes
                 Name = "输出"
             };
             this.Outputs.Add(outputPort);
+        }
+
+        protected override Brush GetDefaultBorderBrush()
+        {
+            return new SolidColorBrush(System.Windows.Media.Color.FromRgb(76, 175, 80)); // 绿色
         }
 
         public override async Task<WorkflowNodeResult> ExecuteAsync(WorkflowContext context)
@@ -203,6 +405,11 @@ namespace WorkflowDesigner.Nodes
                 Name = "输入"
             };
             this.Inputs.Add(inputPort);
+        }
+
+        protected override Brush GetDefaultBorderBrush()
+        {
+            return new SolidColorBrush(System.Windows.Media.Color.FromRgb(244, 67, 54)); // 红色
         }
 
         public override async Task<WorkflowNodeResult> ExecuteAsync(WorkflowContext context)
@@ -262,6 +469,11 @@ namespace WorkflowDesigner.Nodes
             this.Inputs.Add(new ValueNodeInputViewModel<object> { Name = "输入" });
             this.Outputs.Add(new ValueNodeOutputViewModel<object> { Name = "同意" });
             this.Outputs.Add(new ValueNodeOutputViewModel<object> { Name = "拒绝" });
+        }
+
+        protected override Brush GetDefaultBorderBrush()
+        {
+            return new SolidColorBrush(System.Windows.Media.Color.FromRgb(33, 150, 243)); // 蓝色
         }
 
         public override async Task<WorkflowNodeResult> ExecuteAsync(WorkflowContext context)
@@ -324,6 +536,31 @@ namespace WorkflowDesigner.Nodes
 
             return errors.Any() ? ValidationResult.Error(errors) : ValidationResult.Success;
         }
+
+        public override string SerializeNodeData()
+        {
+            var baseData = Newtonsoft.Json.JsonConvert.DeserializeObject<dynamic>(base.SerializeNodeData());
+            baseData.ApprovalTitle = ApprovalTitle;
+            baseData.ApprovalContent = ApprovalContent;
+            baseData.Approvers = Approvers;
+            baseData.RequireAllApproval = RequireAllApproval;
+            return Newtonsoft.Json.JsonConvert.SerializeObject(baseData);
+        }
+
+        public override void DeserializeNodeData(string json)
+        {
+            base.DeserializeNodeData(json);
+            dynamic data = Newtonsoft.Json.JsonConvert.DeserializeObject(json);
+
+            ApprovalTitle = data.ApprovalTitle ?? "审批";
+            ApprovalContent = data.ApprovalContent ?? "";
+            RequireAllApproval = data.RequireAllApproval ?? true;
+
+            if (data.Approvers != null)
+            {
+                Approvers = ((Newtonsoft.Json.Linq.JArray)data.Approvers).ToObject<List<string>>() ?? new List<string>();
+            }
+        }
     }
 
     // 判断节点
@@ -348,6 +585,11 @@ namespace WorkflowDesigner.Nodes
             this.Outputs.Add(new ValueNodeOutputViewModel<object> { Name = "否" });
         }
 
+        protected override Brush GetDefaultBorderBrush()
+        {
+            return new SolidColorBrush(System.Windows.Media.Color.FromRgb(255, 152, 0)); // 橙色
+        }
+
         public override async Task<WorkflowNodeResult> ExecuteAsync(WorkflowContext context)
         {
             var conditionEvaluator = new ConditionEvaluator();
@@ -369,6 +611,20 @@ namespace WorkflowDesigner.Nodes
                 errors.Add("判断条件不能为空");
 
             return errors.Any() ? ValidationResult.Error(errors) : ValidationResult.Success;
+        }
+
+        public override string SerializeNodeData()
+        {
+            var baseData = Newtonsoft.Json.JsonConvert.DeserializeObject<dynamic>(base.SerializeNodeData());
+            baseData.ConditionExpression = ConditionExpression;
+            return Newtonsoft.Json.JsonConvert.SerializeObject(baseData);
+        }
+
+        public override void DeserializeNodeData(string json)
+        {
+            base.DeserializeNodeData(json);
+            dynamic data = Newtonsoft.Json.JsonConvert.DeserializeObject(json);
+            ConditionExpression = data.ConditionExpression ?? "";
         }
     }
 
@@ -406,6 +662,11 @@ namespace WorkflowDesigner.Nodes
             this.Inputs.Add(new ValueNodeInputViewModel<object> { Name = "输入" });
             this.Outputs.Add(new ValueNodeOutputViewModel<object> { Name = "完成" });
             this.Outputs.Add(new ValueNodeOutputViewModel<object> { Name = "失败" });
+        }
+
+        protected override Brush GetDefaultBorderBrush()
+        {
+            return new SolidColorBrush(System.Windows.Media.Color.FromRgb(156, 39, 176)); // 紫色
         }
 
         public override async Task<WorkflowNodeResult> ExecuteAsync(WorkflowContext context)
@@ -466,6 +727,25 @@ namespace WorkflowDesigner.Nodes
 
             return errors.Any() ? ValidationResult.Error(errors) : ValidationResult.Success;
         }
+
+        public override string SerializeNodeData()
+        {
+            var baseData = Newtonsoft.Json.JsonConvert.DeserializeObject<dynamic>(base.SerializeNodeData());
+            baseData.TaskName = TaskName;
+            baseData.TaskDescription = TaskDescription;
+            baseData.TaskType = TaskType;
+            return Newtonsoft.Json.JsonConvert.SerializeObject(baseData);
+        }
+
+        public override void DeserializeNodeData(string json)
+        {
+            base.DeserializeNodeData(json);
+            dynamic data = Newtonsoft.Json.JsonConvert.DeserializeObject(json);
+
+            TaskName = data.TaskName ?? "任务";
+            TaskDescription = data.TaskDescription ?? "";
+            TaskType = data.TaskType ?? "Manual";
+        }
     }
 
     // 通知节点
@@ -508,6 +788,11 @@ namespace WorkflowDesigner.Nodes
 
             this.Inputs.Add(new ValueNodeInputViewModel<object> { Name = "输入" });
             this.Outputs.Add(new ValueNodeOutputViewModel<object> { Name = "完成" });
+        }
+
+        protected override Brush GetDefaultBorderBrush()
+        {
+            return new SolidColorBrush(System.Windows.Media.Color.FromRgb(96, 125, 139)); // 蓝灰色
         }
 
         public override async Task<WorkflowNodeResult> ExecuteAsync(WorkflowContext context)
@@ -554,7 +839,34 @@ namespace WorkflowDesigner.Nodes
 
             return errors.Any() ? ValidationResult.Error(errors) : ValidationResult.Success;
         }
+
+        public override string SerializeNodeData()
+        {
+            var baseData = Newtonsoft.Json.JsonConvert.DeserializeObject<dynamic>(base.SerializeNodeData());
+            baseData.NotificationTitle = NotificationTitle;
+            baseData.NotificationContent = NotificationContent;
+            baseData.Recipients = Recipients;
+            baseData.NotificationType = NotificationType;
+            return Newtonsoft.Json.JsonConvert.SerializeObject(baseData);
+        }
+
+        public override void DeserializeNodeData(string json)
+        {
+            base.DeserializeNodeData(json);
+            dynamic data = Newtonsoft.Json.JsonConvert.DeserializeObject(json);
+
+            NotificationTitle = data.NotificationTitle ?? "通知";
+            NotificationContent = data.NotificationContent ?? "";
+            NotificationType = data.NotificationType ?? "Email";
+
+            if (data.Recipients != null)
+            {
+                Recipients = ((Newtonsoft.Json.Linq.JArray)data.Recipients).ToObject<List<string>>() ?? new List<string>();
+            }
+        }
     }
+
+    #endregion
 
     // 这些类可能需要定义，如果还没有的话
     public class WorkflowNodeInputViewModel : NodeInputViewModel

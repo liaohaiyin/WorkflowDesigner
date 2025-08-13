@@ -30,16 +30,16 @@ namespace WorkflowDesigner.UI.ViewModels
         private bool _canRedo;
         private Stack<string> _undoStack = new Stack<string>();
         private Stack<string> _redoStack = new Stack<string>();
+        private bool _isDragging;
+        private Point _dragStartPosition;
 
         public WorkflowDesignerViewModel()
         {
             try
             {
-                // 使用try-catch包装NetworkViewModel创建，避免版本兼容性问题
                 CreateNetworkViewModel();
-
-                // 设置变化监听（使用更兼容的方式）
                 SetupChangeListeners();
+                SetupNodeSelection();
 
                 Logger.Info("WorkflowDesignerViewModel 初始化成功");
             }
@@ -49,6 +49,8 @@ namespace WorkflowDesigner.UI.ViewModels
                 CreateFallbackNetwork();
             }
         }
+
+        #region 属性
 
         public NetworkViewModel Network
         {
@@ -61,8 +63,28 @@ namespace WorkflowDesigner.UI.ViewModels
             get => _selectedNode;
             set
             {
-                this.RaiseAndSetIfChanged(ref _selectedNode, value);
-                NodeSelectionChanged?.Invoke(this, EventArgs.Empty);
+                var oldNode = _selectedNode;
+                if (this.RaiseAndSetIfChanged(ref _selectedNode, value) != null)
+                {
+                    // 更新旧节点的选择状态
+                    if (oldNode != null)
+                    {
+                        oldNode.IsSelected = false;
+                    }
+
+                    // 更新新节点的选择状态
+                    if (_selectedNode != null)
+                    {
+                        _selectedNode.IsSelected = true;
+                    }
+
+                    // 通知节点选择变化
+                    NodeSelectionChanged?.Invoke(this, EventArgs.Empty);
+
+                    // 更新相关属性
+                    this.RaisePropertyChanged(nameof(HasSelectedNode));
+                    this.RaisePropertyChanged(nameof(CanDeleteSelected));
+                }
             }
         }
 
@@ -86,12 +108,28 @@ namespace WorkflowDesigner.UI.ViewModels
 
         public bool HasNodes => Network?.Nodes?.Items?.Count() > 0;
 
+        public bool HasSelectedNode => SelectedNode != null;
+
+        public bool CanDeleteSelected => SelectedNode != null;
+
+        public bool IsDragging
+        {
+            get => _isDragging;
+            set => this.RaiseAndSetIfChanged(ref _isDragging, value);
+        }
+
+        #endregion
+
+        #region 事件
+
         public event EventHandler NodeSelectionChanged;
         public event EventHandler WorkflowChanged;
+        public event EventHandler<NodeMovedEventArgs> NodeMoved;
 
-        /// <summary>
-        /// 创建NetworkViewModel，处理版本兼容性问题
-        /// </summary>
+        #endregion
+
+        #region 初始化方法
+
         private void CreateNetworkViewModel()
         {
             try
@@ -111,44 +149,31 @@ namespace WorkflowDesigner.UI.ViewModels
             }
         }
 
-        /// <summary>
-        /// 创建备用网络视图模型
-        /// </summary>
         private void CreateFallbackNetwork()
         {
             try
             {
-                // 创建一个最基本的NetworkViewModel实例
                 _network = CreateSimpleNetworkViewModel();
                 Logger.Info("使用备用网络视图模型");
             }
             catch (Exception ex)
             {
                 Logger.Error(ex, "创建备用网络视图模型也失败");
-                // 如果连备用方案都失败，则设置为null，UI层需要处理这种情况
                 _network = null;
             }
         }
 
-        /// <summary>
-        /// 创建简单的网络视图模型（备用方案）
-        /// </summary>
         private NetworkViewModel CreateSimpleNetworkViewModel()
         {
-            // 这里可能需要根据实际的NodeNetwork版本创建一个简化的实现
             return null;
         }
 
-        /// <summary>
-        /// 设置变化监听器
-        /// </summary>
         private void SetupChangeListeners()
         {
             if (Network == null) return;
 
             try
             {
-                // 使用更安全的方式监听变化，避免DynamicData版本问题
                 if (Network.Nodes != null)
                 {
                     SetupNodesChangeListener();
@@ -169,7 +194,6 @@ namespace WorkflowDesigner.UI.ViewModels
         {
             try
             {
-                // 使用属性变化通知而不是DynamicData的变化集
                 this.WhenAnyValue(x => x.Network.Nodes.Count)
                     .Skip(1)
                     .Subscribe(_ => OnNetworkChanged());
@@ -193,6 +217,60 @@ namespace WorkflowDesigner.UI.ViewModels
                 Logger.Debug(ex, "连接变化监听设置失败");
             }
         }
+
+        private void SetupNodeSelection()
+        {
+            // 在节点被添加到网络时设置选择事件处理
+            if (Network?.Nodes != null)
+            {
+                Network.Nodes.Connect()
+                    .Subscribe(changes =>
+                    {
+                        foreach (var change in changes)
+                        {
+                            if (change.Reason == DynamicData.ListChangeReason.Add &&
+                                change.Item.Current is WorkflowNodeViewModel node)
+                            {
+                                SetupNodeEventHandlers(node);
+                            }
+                        }
+                    });
+            }
+        }
+
+        private void SetupNodeEventHandlers(WorkflowNodeViewModel node)
+        {
+            // 设置节点点击事件
+            node.WhenAnyValue(x => x.IsSelected)
+                .Subscribe(isSelected =>
+                {
+                    if (isSelected && SelectedNode != node)
+                    {
+                        SelectedNode = node;
+                    }
+                    else if (!isSelected && SelectedNode == node)
+                    {
+                        SelectedNode = null;
+                    }
+                });
+
+            // 设置节点位置变化事件
+            node.WhenAnyValue(x => x.Position)
+                .Skip(1) // 跳过初始值
+                .Subscribe(newPosition =>
+                {
+                    OnNodePositionChanged(node, newPosition);
+                });
+
+            // 设置节点属性变化事件
+            node.WhenAnyValue(x => x.NodeName, x => x.Description)
+                .Skip(1) // 跳过初始值
+                .Subscribe(_ => OnNodePropertyChanged(node));
+        }
+
+        #endregion
+
+        #region 节点操作方法
 
         public void CreateNewWorkflow()
         {
@@ -226,6 +304,8 @@ namespace WorkflowDesigner.UI.ViewModels
 
                 Network.Nodes.Clear();
                 Network.Connections.Clear();
+                SelectedNode = null;
+
                 // 反序列化节点
                 if (!string.IsNullOrEmpty(definition.NodesJson))
                 {
@@ -237,11 +317,12 @@ namespace WorkflowDesigner.UI.ViewModels
                         {
                             node.DeserializeNodeData(nodeData.ToString());
                             Network.Nodes.Add(node);
+                            SetupNodeEventHandlers(node);
                         }
                     }
                 }
 
-                //反序列化连接
+                // 反序列化连接
                 if (!string.IsNullOrEmpty(definition.ConnectionsJson))
                 {
                     var connections = JsonConvert.DeserializeObject<List<WorkflowConnection>>(definition.ConnectionsJson);
@@ -275,6 +356,319 @@ namespace WorkflowDesigner.UI.ViewModels
                 throw new ApplicationException("加载工作流失败", ex);
             }
         }
+
+        public async Task LoadWorkflowAsync(WorkflowDefinition definition)
+        {
+            await Task.Run(() => LoadWorkflow(definition));
+        }
+
+        public void AddNode(Type nodeType, Point position)
+        {
+            try
+            {
+                if (Network == null)
+                {
+                    throw new InvalidOperationException("网络视图模型未初始化");
+                }
+
+                SaveState();
+
+                var node = CreateNodeFromType(nodeType.Name);
+                if (node != null)
+                {
+                    node.Position = position;
+                    Network.Nodes.Add(node);
+                    SetupNodeEventHandlers(node);
+
+                    // 自动选择新添加的节点
+                    SelectedNode = node;
+
+                    Logger.Info($"添加节点: {nodeType.Name} 在位置 ({position.X}, {position.Y})");
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex, $"添加节点失败: {nodeType?.Name}");
+                throw new ApplicationException("添加节点失败", ex);
+            }
+        }
+
+        public void SelectNode(WorkflowNodeViewModel node)
+        {
+            try
+            {
+                if (node != null && Network.Nodes.Items.Contains(node))
+                {
+                    SelectedNode = node;
+                    Logger.Debug($"选择节点: {node.NodeName}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex, "选择节点失败");
+            }
+        }
+
+        public void SelectNodeAt(Point position)
+        {
+            try
+            {
+                var node = GetNodeAt(position);
+                if (node != null)
+                {
+                    SelectedNode = node;
+                }
+                else
+                {
+                    SelectedNode = null;
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex, "按位置选择节点失败");
+            }
+        }
+
+        public WorkflowNodeViewModel GetNodeAt(Point position)
+        {
+            try
+            {
+                if (Network?.Nodes == null) return null;
+
+                // 查找位置附近的节点（允许一定的误差范围）
+                const double tolerance = 50; // 像素误差范围
+
+                return Network.Nodes.Items.OfType<WorkflowNodeViewModel>()
+                    .FirstOrDefault(node =>
+                    {
+                        var nodePos = node.Position;
+                        return Math.Abs(nodePos.X - position.X) <= tolerance &&
+                               Math.Abs(nodePos.Y - position.Y) <= tolerance;
+                    });
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex, "获取位置处的节点失败");
+                return null;
+            }
+        }
+
+        public void MoveSelectedNode(Vector offset)
+        {
+            try
+            {
+                if (SelectedNode != null)
+                {
+                    var oldPosition = SelectedNode.Position;
+                    var newPosition = new Point(
+                        Math.Max(0, oldPosition.X + offset.X),
+                        Math.Max(0, oldPosition.Y + offset.Y)
+                    );
+
+                    MoveNode(SelectedNode, newPosition);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex, "移动选中节点失败");
+            }
+        }
+
+        public void MoveNode(WorkflowNodeViewModel node, Point newPosition)
+        {
+            try
+            {
+                if (node == null) return;
+
+                var oldPosition = node.Position;
+                node.Position = newPosition;
+
+                // 触发节点移动事件
+                NodeMoved?.Invoke(this, new NodeMovedEventArgs
+                {
+                    Node = node,
+                    OldPosition = oldPosition,
+                    NewPosition = newPosition
+                });
+
+                HasChanges = true;
+                Logger.Debug($"移动节点 {node.NodeName} 从 ({oldPosition.X}, {oldPosition.Y}) 到 ({newPosition.X}, {newPosition.Y})");
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex, "移动节点失败");
+            }
+        }
+
+        public void DeleteSelectedNodes()
+        {
+            try
+            {
+                if (SelectedNode != null && Network != null)
+                {
+                    SaveState();
+                    DeleteNode(SelectedNode);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex, "删除节点失败");
+                throw new ApplicationException("删除节点失败", ex);
+            }
+        }
+
+        public void DeleteNode(WorkflowNodeViewModel node)
+        {
+            try
+            {
+                if (node == null || Network == null) return;
+
+                // 删除相关连接
+                var connectionsToRemove = Network.Connections.Items
+                    .Where(c => c.Input?.Parent == node || c.Output?.Parent == node)
+                    .ToList();
+
+                foreach (var connection in connectionsToRemove)
+                {
+                    Network.Connections.Remove(connection);
+                }
+
+                // 删除节点
+                Network.Nodes.Remove(node);
+
+                // 如果删除的是当前选中节点，清除选择
+                if (SelectedNode == node)
+                {
+                    SelectedNode = null;
+                }
+
+                Logger.Info($"删除节点: {node.NodeName}");
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex, "删除节点失败");
+            }
+        }
+
+        #endregion
+
+        #region 拖拽操作
+
+        public void StartDrag(Point startPosition)
+        {
+            try
+            {
+                _dragStartPosition = startPosition;
+                IsDragging = true;
+                Logger.Debug($"开始拖拽操作，起始位置: ({startPosition.X}, {startPosition.Y})");
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex, "开始拖拽失败");
+            }
+        }
+
+        public void UpdateDrag(Point currentPosition)
+        {
+            try
+            {
+                if (!IsDragging || SelectedNode == null) return;
+
+                var offset = currentPosition - _dragStartPosition;
+                var newPosition = new Point(
+                    Math.Max(0, SelectedNode.Position.X + offset.X),
+                    Math.Max(0, SelectedNode.Position.Y + offset.Y)
+                );
+
+                SelectedNode.Position = newPosition;
+                _dragStartPosition = currentPosition;
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex, "更新拖拽失败");
+            }
+        }
+
+        public void EndDrag(Point endPosition)
+        {
+            try
+            {
+                if (!IsDragging) return;
+
+                IsDragging = false;
+
+                if (SelectedNode != null)
+                {
+                    var finalOffset = endPosition - _dragStartPosition;
+                    var finalPosition = new Point(
+                        Math.Max(0, SelectedNode.Position.X + finalOffset.X),
+                        Math.Max(0, SelectedNode.Position.Y + finalOffset.Y)
+                    );
+
+                    MoveNode(SelectedNode, finalPosition);
+                }
+
+                Logger.Debug($"结束拖拽操作，结束位置: ({endPosition.X}, {endPosition.Y})");
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex, "结束拖拽失败");
+            }
+        }
+
+        public void CancelDrag()
+        {
+            try
+            {
+                IsDragging = false;
+                Logger.Debug("取消拖拽操作");
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex, "取消拖拽失败");
+            }
+        }
+
+        #endregion
+
+        #region 事件处理
+
+        private void OnNodePositionChanged(WorkflowNodeViewModel node, Point newPosition)
+        {
+            try
+            {
+                HasChanges = true;
+                Logger.Debug($"节点 {node.NodeName} 位置变化到 ({newPosition.X}, {newPosition.Y})");
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex, "处理节点位置变化失败");
+            }
+        }
+
+        private void OnNodePropertyChanged(WorkflowNodeViewModel node)
+        {
+            try
+            {
+                HasChanges = true;
+                Logger.Debug($"节点 {node.NodeName} 属性发生变化");
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex, "处理节点属性变化失败");
+            }
+        }
+
+        private void OnNetworkChanged()
+        {
+            HasChanges = true;
+            WorkflowChanged?.Invoke(this, EventArgs.Empty);
+            this.RaisePropertyChanged(nameof(HasNodes));
+        }
+
+        #endregion
+
+        #region 其他方法 (保持原有实现)
 
         public WorkflowDefinition BuildWorkflowDefinition()
         {
@@ -349,14 +743,12 @@ namespace WorkflowDesigner.UI.ViewModels
                     return ValidationResult.Error(errors);
                 }
 
-                // 检查是否有节点
                 if (!HasNodes)
                 {
                     errors.Add("工作流必须至少包含一个节点");
                     return ValidationResult.Error(errors);
                 }
 
-                // 检查开始节点
                 var startNodes = Network.Nodes.Items.OfType<StartNodeViewModel>().ToList();
                 if (startNodes.Count == 0)
                 {
@@ -367,14 +759,12 @@ namespace WorkflowDesigner.UI.ViewModels
                     errors.Add("工作流只能包含一个开始节点");
                 }
 
-                // 检查结束节点
                 var endNodes = Network.Nodes.Items.OfType<EndNodeViewModel>().ToList();
                 if (endNodes.Count == 0)
                 {
                     errors.Add("工作流必须包含至少一个结束节点");
                 }
 
-                // 验证每个节点的配置
                 foreach (var node in Network.Nodes.Items.OfType<WorkflowNodeViewModel>())
                 {
                     var nodeValidation = node.ValidateConfiguration();
@@ -393,64 +783,6 @@ namespace WorkflowDesigner.UI.ViewModels
             {
                 Logger.Error(ex, "验证工作流失败");
                 return ValidationResult.Error(new List<string> { $"验证失败: {ex.Message}" });
-            }
-        }
-
-        public void AddNode(Type nodeType, Point position)
-        {
-            try
-            {
-                if (Network == null)
-                {
-                    throw new InvalidOperationException("网络视图模型未初始化");
-                }
-
-                SaveState();
-
-                var node = CreateNodeFromType(nodeType.Name);
-                if (node != null)
-                {
-                    node.Position = position;
-                    Network.Nodes.Add(node);
-                    SelectedNode = node;
-                    Logger.Info($"添加节点: {nodeType.Name} 在位置 ({position.X}, {position.Y})");
-                }
-            }
-            catch (Exception ex)
-            {
-                Logger.Error(ex, $"添加节点失败: {nodeType?.Name}");
-                throw new ApplicationException("添加节点失败", ex);
-            }
-        }
-
-        public void DeleteSelectedNodes()
-        {
-            try
-            {
-                if (SelectedNode != null && Network != null)
-                {
-                    SaveState();
-
-                    // 删除相关连接
-                    var connectionsToRemove = Network.Connections.Items
-                        .Where(c => c.Input?.Parent == SelectedNode || c.Output?.Parent == SelectedNode)
-                        .ToList();
-
-                    foreach (var connection in connectionsToRemove)
-                    {
-                        Network.Connections.Remove(connection);
-                    }
-
-                    // 删除节点
-                    Network.Nodes.Remove(SelectedNode);
-                    SelectedNode = null;
-                    Logger.Info("删除选中节点");
-                }
-            }
-            catch (Exception ex)
-            {
-                Logger.Error(ex, "删除节点失败");
-                throw new ApplicationException("删除节点失败", ex);
             }
         }
 
@@ -534,13 +866,6 @@ namespace WorkflowDesigner.UI.ViewModels
             }
         }
 
-        private void OnNetworkChanged()
-        {
-            HasChanges = true;
-            WorkflowChanged?.Invoke(this, EventArgs.Empty);
-            this.RaisePropertyChanged(nameof(HasNodes));
-        }
-
         private void SaveState()
         {
             try
@@ -602,10 +927,10 @@ namespace WorkflowDesigner.UI.ViewModels
 
                 Network.Nodes.Clear();
                 Network.Connections.Clear();
+                SelectedNode = null;
 
                 var data = JsonConvert.DeserializeObject<dynamic>(json);
 
-                // 恢复节点
                 var nodeMap = new Dictionary<string, WorkflowNodeViewModel>();
                 foreach (var nodeData in data.Nodes)
                 {
@@ -616,11 +941,11 @@ namespace WorkflowDesigner.UI.ViewModels
                     {
                         node.DeserializeNodeData(nodeJson);
                         Network.Nodes.Add(node);
+                        SetupNodeEventHandlers(node);
                         nodeMap[node.NodeId] = node;
                     }
                 }
 
-                // 恢复连接
                 foreach (var connData in data.Connections)
                 {
                     string outputNodeId = connData.OutputNodeId;
@@ -647,5 +972,18 @@ namespace WorkflowDesigner.UI.ViewModels
                 Logger.Error(ex, "反序列化网络失败");
             }
         }
+
+        #endregion
     }
+
+    #region 事件参数类
+
+    public class NodeMovedEventArgs : EventArgs
+    {
+        public WorkflowNodeViewModel Node { get; set; }
+        public Point OldPosition { get; set; }
+        public Point NewPosition { get; set; }
+    }
+
+    #endregion
 }

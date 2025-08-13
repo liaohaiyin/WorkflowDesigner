@@ -9,7 +9,7 @@
                     mc:Ignorable="d"
                     Width="140" Height="80">
 
-    <Border Background="#E8F5E8" BorderBrush="#4CAF50" BorderThickness="2" CornerRadius="8">
+    <Border Background="#E8F5E8" BorderBrush="#4CAF50" BorderThickness="2" CornerRadius="4">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>

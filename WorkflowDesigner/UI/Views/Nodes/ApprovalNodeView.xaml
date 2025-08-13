@@ -8,7 +8,7 @@
                     xmlns:vm="clr-namespace:WorkflowDesigner.Nodes"
                     mc:Ignorable="d"
                     Width="140" Height="80">
-    <Border Background="#E3F2FD" BorderBrush="#2196F3" BorderThickness="2" CornerRadius="8">
+    <Border Background="#E3F2FD" BorderBrush="#2196F3" BorderThickness="2" CornerRadius="4">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
