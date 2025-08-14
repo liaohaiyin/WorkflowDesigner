@@ -30,7 +30,6 @@ namespace WorkflowDesigner.UI.ViewModels
         public PropertyPanelViewModel PropertyPanelViewModel { get; private set; }
         public WorkflowMonitorViewModel MonitorViewModel { get; private set; }
         public OutputPanelViewModel OutputPanelViewModel { get; private set; }
-
         // 默认构造函数 - 创建基本功能
         public MainWindowViewModel()
         {
@@ -298,7 +297,7 @@ namespace WorkflowDesigner.UI.ViewModels
             {
                 var openFileDialog = new OpenFileDialog
                 {
-                    Filter = "工作流文件 (*.wfd)|*.wfd|JSON文件 (*.json)|*.json|所有文件 (*.*)|*.*",
+                    Filter = "工作流文件 (*.wfd)|*.wfd|JSON文件 (*.json)|*.json",
                     Title = "打开工作流文件"
                 };
 
@@ -370,7 +369,7 @@ namespace WorkflowDesigner.UI.ViewModels
             {
                 var saveFileDialog = new SaveFileDialog
                 {
-                    Filter = "工作流文件 (*.wfd)|*.wfd|JSON文件 (*.json)|*.json|所有文件 (*.*)|*.*",
+                    Filter = "工作流文件 (*.wfd)|*.wfd|JSON文件 (*.json)|*.json",
                     Title = "保存工作流文件",
                     DefaultExt = "json"
                 };

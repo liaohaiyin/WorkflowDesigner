@@ -79,7 +79,6 @@ namespace WorkflowDesigner.UI.ViewModels
     public class ToolboxItemViewModel : ReactiveObject
     {
         private bool _isSelected;
-
         public string Name { get; set; }
         public string Description { get; set; }
         public string Icon { get; set; } // 改为Unicode字符

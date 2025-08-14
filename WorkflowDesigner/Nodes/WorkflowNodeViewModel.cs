@@ -27,7 +27,7 @@ namespace WorkflowDesigner.Nodes
         private string _executorId = "";
         private string _executorRole = "";
         private TimeSpan? _timeoutDuration;
-        private bool _isSelected = false;
+        private bool _isChecked = false;
         private bool _isHovered = false;
         private bool _isDragging = false;
 
@@ -98,10 +98,10 @@ namespace WorkflowDesigner.Nodes
         /// </summary>
         public bool IsChecked
         {
-            get => _isSelected;
+            get => _isChecked;
             set
             {
-                if (this.RaiseAndSetIfChanged(ref _isSelected, value))
+                if (this.RaiseAndSetIfChanged(ref _isChecked, value))
                 {
                     this.RaisePropertyChanged(nameof(NodeBorderBrush));
                     this.RaisePropertyChanged(nameof(NodeBorderThickness));
@@ -410,7 +410,7 @@ namespace WorkflowDesigner.Nodes
 
         protected override Brush GetDefaultBorderBrush()
         {
-            return new SolidColorBrush(System.Windows.Media.Color.FromRgb(244, 67, 54)); // 红色
+            return new SolidColorBrush(Color.FromRgb(244, 67, 54)); // 红色
         }
 
         public override async Task<WorkflowNodeResult> ExecuteAsync(WorkflowContext context)
@@ -474,7 +474,7 @@ namespace WorkflowDesigner.Nodes
 
         protected override Brush GetDefaultBorderBrush()
         {
-            return new SolidColorBrush(System.Windows.Media.Color.FromRgb(33, 150, 243)); // 蓝色
+            return new SolidColorBrush(Color.FromRgb(33, 150, 243)); // 蓝色
         }
 
         public override async Task<WorkflowNodeResult> ExecuteAsync(WorkflowContext context)
@@ -568,9 +568,7 @@ namespace WorkflowDesigner.Nodes
     public class DecisionNodeViewModel : WorkflowNodeViewModel
     {
         private string _conditionExpression = "";
-
         public override WorkflowNodeType NodeType => WorkflowNodeType.Decision;
-
         public string ConditionExpression
         {
             get => _conditionExpression;
@@ -635,9 +633,7 @@ namespace WorkflowDesigner.Nodes
         private string _taskName = "任务";
         private string _taskDescription = "";
         private string _taskType = "Manual";
-
         public override WorkflowNodeType NodeType => WorkflowNodeType.Task;
-
         public string TaskName
         {
             get => _taskName;
@@ -667,7 +663,7 @@ namespace WorkflowDesigner.Nodes
 
         protected override Brush GetDefaultBorderBrush()
         {
-            return new SolidColorBrush(System.Windows.Media.Color.FromRgb(156, 39, 176)); // 紫色
+            return new SolidColorBrush(Color.FromRgb(156, 39, 176)); // 紫色
         }
 
         public override async Task<WorkflowNodeResult> ExecuteAsync(WorkflowContext context)
@@ -793,7 +789,7 @@ namespace WorkflowDesigner.Nodes
 
         protected override Brush GetDefaultBorderBrush()
         {
-            return new SolidColorBrush(System.Windows.Media.Color.FromRgb(96, 125, 139)); // 蓝灰色
+            return new SolidColorBrush(Color.FromRgb(96, 125, 139)); // 蓝灰色
         }
 
         public override async Task<WorkflowNodeResult> ExecuteAsync(WorkflowContext context)
@@ -869,7 +865,6 @@ namespace WorkflowDesigner.Nodes
 
     #endregion
 
-    // 这些类可能需要定义，如果还没有的话
     public class WorkflowNodeInputViewModel : NodeInputViewModel
     {
         public WorkflowNodeInputViewModel()

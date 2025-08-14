@@ -139,8 +139,6 @@ namespace WorkflowDesigner.UI.Views
             catch (Exception ex)
             {
                 UpdateStatusText($"添加节点失败: {ex.Message}");
-                MessageBox.Show($"添加节点失败: {ex.Message}", "错误",
-                               MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 

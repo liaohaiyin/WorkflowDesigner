@@ -178,7 +178,7 @@ namespace WorkflowDesigner.Infrastructure.Data
                 // 检查数据库是否已经有数据
                 if (context.WorkflowDefinitions.Any())
                 {
-                    return; // 数据库已经有数据，不需要重新初始化
+                    return;
                 }
 
                 // 创建示例工作流定义 - 请假审批流程

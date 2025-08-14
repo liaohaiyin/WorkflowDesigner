@@ -18,10 +18,11 @@ namespace WorkflowDesigner.UI.ViewModels
 
         public PropertyPanelViewModel()
         {
-            AvailableUsers = new ObservableCollection<User>();
-            // 添加默认用户以避免空集合
-            AvailableUsers.Add(new User { Id = "1", Name = "张三", Role = "Manager" });
-            AvailableUsers.Add(new User { Id = "2", Name = "李四", Role = "Employee" });
+            AvailableUsers = new ObservableCollection<User>
+            {
+                new User { Id = "1", Name = "张三", Role = "Manager" },
+                new User { Id = "2", Name = "李四", Role = "Employee" }
+            };
         }
 
         public PropertyPanelViewModel(IUserService userService) : this()
