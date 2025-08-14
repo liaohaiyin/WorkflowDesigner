@@ -1,23 +1,24 @@
-﻿using Prism.Ioc;
+﻿using NLog;
+using Prism.Ioc;
 using Prism.Unity;
+using ReactiveUI;
+using Splat;
 using System;
+using System.Reactive;
 using System.Threading.Tasks;
 using System.Windows;
-using WorkflowDesigner.UI.Views;
-using WorkflowDesigner.UI.ViewModels;
 using WorkflowDesigner.Core.Interfaces;
 using WorkflowDesigner.Core.Services;
 using WorkflowDesigner.Engine;
 using WorkflowDesigner.Infrastructure.Data;
 using WorkflowDesigner.Infrastructure.Database;
-using WorkflowDesigner.Infrastructure.Startup;
 using WorkflowDesigner.Infrastructure.Services;
-using WorkflowDesigner.UI.ViewLocators;
-using NLog;
-using ReactiveUI;
-using Splat;
-using WorkflowDesigner.UI.Views.Nodes;
+using WorkflowDesigner.Infrastructure.Startup;
 using WorkflowDesigner.Nodes;
+using WorkflowDesigner.UI.ViewLocators;
+using WorkflowDesigner.UI.ViewModels;
+using WorkflowDesigner.UI.Views;
+using WorkflowDesigner.UI.Views.Nodes;
 
 namespace WorkflowDesigner
 {
@@ -36,6 +37,8 @@ namespace WorkflowDesigner
 
                 // 设置未处理异常处理器
                 SetupExceptionHandling();
+
+                SetupReactiveUIExceptionHandling();
 
                 // 执行启动前检查
                 var startupResult = await StartupHelper.PrepareApplicationAsync();
@@ -58,6 +61,38 @@ namespace WorkflowDesigner
                 MessageBox.Show($"应用程序启动失败: {ex.Message}", "启动错误",
                                MessageBoxButton.OK, MessageBoxImage.Error);
                 Environment.Exit(1);
+            }
+        }
+
+        private void SetupReactiveUIExceptionHandling()
+        {
+            try
+            {
+                // 设置ReactiveUI的全局异常处理器
+                RxApp.DefaultExceptionHandler = Observer.Create<Exception>(ex =>
+                {
+                    Logger.Error(ex, "ReactiveUI管道异常");
+
+                    // 在UI线程上显示错误（可选）
+                    Dispatcher.BeginInvoke(new Action(() =>
+                    {
+                        try
+                        {
+                            // 可以选择显示错误信息或记录到输出面板
+                            System.Diagnostics.Debug.WriteLine($"ReactiveUI异常: {ex.Message}");
+                        }
+                        catch
+                        {
+                            // 忽略显示错误时的异常
+                        }
+                    }));
+                });
+
+                Logger.Info("ReactiveUI异常处理器设置完成");
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex, "设置ReactiveUI异常处理器失败");
             }
         }
 

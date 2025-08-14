@@ -40,7 +40,7 @@
             <StackPanel Orientation="Horizontal">
 
                 <!-- 视图控制 -->
-                <GroupBox Header="视图" Margin="0,0,10,0" Padding="5">
+                <GroupBox Header="视图" Margin="0,0,10,0" Padding="5" Visibility="Collapsed">
                     <StackPanel Orientation="Horizontal">
                         <Button Content="适合窗口" Click="FitToWindow_Click" 
                                 Padding="8,4" Margin="2" ToolTip="缩放以适合窗口大小"/>

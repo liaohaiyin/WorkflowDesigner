@@ -87,7 +87,6 @@ namespace WorkflowDesigner.Core.Models
             }
         }
 
-        // 计算属性 - 不映射到数据库
         [NotMapped]
         public bool CanPause => Status == WorkflowInstanceStatus.Running;
 

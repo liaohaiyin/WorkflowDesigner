@@ -2,6 +2,7 @@
 using ReactiveUI;
 using System;
 using System.Reactive.Disposables;
+using System.Reactive.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -395,26 +396,98 @@ namespace WorkflowDesigner.UI.Views.Nodes
         #endregion
 
         #region 视觉状态更新
-
+        private CompositeDisposable _subscriptions = new CompositeDisposable();
         private void SetupNodeBindings()
         {
             if (ViewModel is WorkflowNodeViewModel nodeViewModel)
             {
-                // 绑定选择状态变化
-                nodeViewModel.WhenAnyValue(x => x.IsChecked)
-                    .Subscribe(isSelected => UpdateSelectionVisual(isSelected));
+                try
+                {
+                    // 安全的绑定设置，带异常处理
+                    nodeViewModel.WhenAnyValue(x => x.IsSelected)
+                        .ObserveOnDispatcher()
+                        .Subscribe(
+                            onNext: isSelected =>
+                            {
+                                try
+                                {
+                                    UpdateSelectionVisual(isSelected);
+                                }
+                                catch (Exception ex)
+                                {
+                                    System.Diagnostics.Debug.WriteLine($"更新选择视觉效果失败: {ex.Message}");
+                                }
+                            },
+                            onError: ex =>
+                            {
+                                System.Diagnostics.Debug.WriteLine($"IsSelected绑定异常: {ex.Message}");
+                            })
+                        .DisposeWith(_subscriptions);
 
-                // 绑定悬停状态变化
-                nodeViewModel.WhenAnyValue(x => x.IsHovered)
-                    .Subscribe(isHovered => UpdateHoverVisual(isHovered));
+                    nodeViewModel.WhenAnyValue(x => x.IsHovered)
+                        .ObserveOnDispatcher()
+                        .Subscribe(
+                            onNext: isHovered =>
+                            {
+                                try
+                                {
+                                    UpdateHoverVisual(isHovered);
+                                }
+                                catch (Exception ex)
+                                {
+                                    System.Diagnostics.Debug.WriteLine($"更新悬停视觉效果失败: {ex.Message}");
+                                }
+                            },
+                            onError: ex =>
+                            {
+                                System.Diagnostics.Debug.WriteLine($"IsHovered绑定异常: {ex.Message}");
+                            })
+                        .DisposeWith(_subscriptions);
 
-                // 绑定拖拽状态变化
-                nodeViewModel.WhenAnyValue(x => x.IsDragging)
-                    .Subscribe(isDragging => UpdateDragVisual(isDragging));
+                    nodeViewModel.WhenAnyValue(x => x.IsDragging)
+                        .ObserveOnDispatcher()
+                        .Subscribe(
+                            onNext: isDragging =>
+                            {
+                                try
+                                {
+                                    UpdateDragVisual(isDragging);
+                                }
+                                catch (Exception ex)
+                                {
+                                    System.Diagnostics.Debug.WriteLine($"更新拖拽视觉效果失败: {ex.Message}");
+                                }
+                            },
+                            onError: ex =>
+                            {
+                                System.Diagnostics.Debug.WriteLine($"IsDragging绑定异常: {ex.Message}");
+                            })
+                        .DisposeWith(_subscriptions);
 
-                // 绑定位置变化
-                nodeViewModel.WhenAnyValue(x => x.Position)
-                    .Subscribe(position => UpdatePosition(position));
+                    nodeViewModel.WhenAnyValue(x => x.Status)
+                        .ObserveOnDispatcher()
+                        .Subscribe(
+                            onNext: status =>
+                            {
+                                try
+                                {
+                                    //UpdateStatusVisual(status);
+                                }
+                                catch (Exception ex)
+                                {
+                                    System.Diagnostics.Debug.WriteLine($"更新状态视觉效果失败: {ex.Message}");
+                                }
+                            },
+                            onError: ex =>
+                            {
+                                System.Diagnostics.Debug.WriteLine($"Status绑定异常: {ex.Message}");
+                            })
+                        .DisposeWith(_subscriptions);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"设置节点绑定失败: {ex.Message}");
+                }
             }
         }
 
@@ -539,6 +612,11 @@ namespace WorkflowDesigner.UI.Views.Nodes
             return new SolidColorBrush(Color.FromRgb(158, 158, 158));
         }
 
+        private void OnUnloaded(object sender, RoutedEventArgs e)
+        {
+            _subscriptions?.Dispose();
+            _subscriptions = new CompositeDisposable();
+        }
         #endregion
 
         #region 辅助方法

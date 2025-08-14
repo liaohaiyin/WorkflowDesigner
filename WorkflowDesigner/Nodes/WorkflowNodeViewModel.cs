@@ -7,8 +7,10 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
+using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Media;
 using WorkflowDesigner.Core.Interfaces;
 using WorkflowDesigner.Core.Models;
@@ -88,6 +90,79 @@ namespace WorkflowDesigner.Nodes
         }
 
         public Dictionary<string, object> NodeData { get; set; } = new Dictionary<string, object>();
+
+        protected void SetupSafeObservables()
+        {
+            try
+            {
+                // 安全的属性变化监听，带异常处理
+                this.WhenAnyValue(x => x.IsChecked)
+                    .Subscribe(
+                        onNext: isSelected =>
+                        {
+                            try
+                            {
+                                // 处理选择状态变化
+                                OnSelectionChanged(isSelected);
+                            }
+                            catch (Exception ex)
+                            {
+                                // 记录异常但不中断管道
+                                System.Diagnostics.Debug.WriteLine($"选择状态变化处理异常: {ex.Message}");
+                            }
+                        },
+                        onError: ex =>
+                        {
+                            // 处理Observable管道异常
+                            System.Diagnostics.Debug.WriteLine($"IsChecked Observable异常: {ex.Message}");
+                        });
+
+                _ = this.WhenAnyValue(x => x.IsHovered)
+                    .Subscribe(
+                        onNext: isHovered =>
+                        {
+                            try
+                            {
+                                OnHoverChanged(isHovered);
+                            }
+                            catch (Exception ex)
+                            {
+                                System.Diagnostics.Debug.WriteLine($"悬停状态变化处理异常: {ex.Message}");
+                            }
+                        },
+                        onError: ex =>
+                        {
+                            System.Diagnostics.Debug.WriteLine($"IsHovered Observable异常: {ex.Message}");
+                        });
+
+                this.WhenAnyValue(x => x.Position)
+                    .Skip(1) // 跳过初始值
+                    .Subscribe(
+                        onNext: position =>
+                        {
+                            try
+                            {
+                                OnPositionChanged(position);
+                            }
+                            catch (Exception ex)
+                            {
+                                System.Diagnostics.Debug.WriteLine($"位置变化处理异常: {ex.Message}");
+                            }
+                        },
+                        onError: ex =>
+                        {
+                            System.Diagnostics.Debug.WriteLine($"Position Observable异常: {ex.Message}");
+                        });
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"设置Observable失败: {ex.Message}");
+            }
+        }
+
+        protected virtual void OnSelectionChanged(bool isSelected) { }
+        protected virtual void OnHoverChanged(bool isHovered) { }
+        protected virtual void OnPositionChanged(Point position) { }
 
         #endregion
 

@@ -9,6 +9,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
 using System.Windows;
@@ -16,13 +17,13 @@ using WorkflowDesigner.Core.Models;
 using WorkflowDesigner.Core.Services;
 using WorkflowDesigner.Engine;
 using WorkflowDesigner.Nodes;
-using WorkflowDesigner.UI.ViewModels;
 
 namespace WorkflowDesigner.UI.ViewModels
 {
     public class WorkflowDesignerViewModel : ReactiveObject
     {
         private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
+        private CompositeDisposable _disposables = new CompositeDisposable();
 
         private NetworkViewModel _network;
         private WorkflowNodeViewModel _selectedNode;
@@ -197,7 +198,24 @@ namespace WorkflowDesigner.UI.ViewModels
             {
                 this.WhenAnyValue(x => x.Network.Nodes.Count)
                     .Skip(1)
-                    .Subscribe(_ => OnNetworkChanged());
+                    .ObserveOnDispatcher() // 确保在UI线程上执行
+                    .Subscribe(
+                        onNext: count =>
+                        {
+                            try
+                            {
+                                OnNetworkChanged();
+                            }
+                            catch (Exception ex)
+                            {
+                                Logger.Error(ex, "处理节点数量变化失败");
+                            }
+                        },
+                        onError: ex =>
+                        {
+                            Logger.Error(ex, "节点数量监听Observable异常");
+                        })
+                    .DisposeWith(_disposables);
             }
             catch (Exception ex)
             {
@@ -211,12 +229,35 @@ namespace WorkflowDesigner.UI.ViewModels
             {
                 this.WhenAnyValue(x => x.Network.Connections.Count)
                     .Skip(1)
-                    .Subscribe(_ => OnNetworkChanged());
+                    .ObserveOnDispatcher()
+                    .Subscribe(
+                        onNext: count =>
+                        {
+                            try
+                            {
+                                OnNetworkChanged();
+                            }
+                            catch (Exception ex)
+                            {
+                                Logger.Error(ex, "处理连接数量变化失败");
+                            }
+                        },
+                        onError: ex =>
+                        {
+                            Logger.Error(ex, "连接数量监听Observable异常");
+                        })
+                    .DisposeWith(_disposables);
             }
             catch (Exception ex)
             {
                 Logger.Debug(ex, "连接变化监听设置失败");
             }
+        }
+
+        // 添加Dispose方法来清理资源
+        public void Dispose()
+        {
+            _disposables?.Dispose();
         }
 
         private void SetupNodeSelection()
@@ -229,7 +270,7 @@ namespace WorkflowDesigner.UI.ViewModels
                     {
                         foreach (var change in changes)
                         {
-                            if (change.Reason == DynamicData.ListChangeReason.Add &&
+                            if (change.Reason == ListChangeReason.Add &&
                                 change.Item.Current is WorkflowNodeViewModel node)
                             {
                                 SetupNodeEventHandlers(node);
@@ -669,7 +710,7 @@ namespace WorkflowDesigner.UI.ViewModels
 
         #endregion
 
-        #region 其他方法 (保持原有实现)
+        #region
 
         public WorkflowDefinition BuildWorkflowDefinition()
         {
