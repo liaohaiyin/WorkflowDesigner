@@ -70,10 +70,14 @@ namespace WorkflowDesigner.UI.Utilities
                 var hitTarget = GetHitTarget(e.GetPosition(_networkView));
                 
                 // 检查是否点击了输出端口
-                if (hitTarget is PortView portView && portView.ViewModel is NodeOutputViewModel outputPort)
+                if (hitTarget is PortView portView)
                 {
-                    StartConnection(outputPort, e.GetPosition(_networkView));
-                    e.Handled = true;
+                    var outputPort = GetOutputPortFromView(portView);
+                    if (outputPort != null)
+                    {
+                        StartConnection(outputPort, e.GetPosition(_networkView));
+                        e.Handled = true;
+                    }
                 }
             }
             catch (Exception ex)
@@ -113,9 +117,17 @@ namespace WorkflowDesigner.UI.Utilities
                     var hitTarget = GetHitTarget(e.GetPosition(_networkView));
                     
                     // 检查是否释放在输入端口上
-                    if (hitTarget is PortView portView && portView.ViewModel is NodeInputViewModel inputPort)
+                    if (hitTarget is PortView portView)
                     {
-                        CompleteConnection(inputPort);
+                        var inputPort = GetInputPortFromView(portView);
+                        if (inputPort != null)
+                        {
+                            CompleteConnection(inputPort);
+                        }
+                        else
+                        {
+                            CancelConnection();
+                        }
                     }
                     else
                     {
@@ -236,24 +248,26 @@ namespace WorkflowDesigner.UI.Utilities
                     _connectionPreview = new ConnectionPreviewControl();
                     
                     // 将预览控件添加到NetworkView中
-                    // 注意：这里假设NetworkView内部有一个可以添加子元素的容器
-                    // 在实际实现中可能需要根据NetworkView的具体结构进行调整
-                    if (_networkView is System.Windows.Controls.Panel panel)
+                    // NetworkView可能不直接继承自Panel，需要找到合适的容器
+                    try
                     {
-                        panel.Children.Add(_connectionPreview);
-                    }
-                    else
-                    {
-                        // 如果NetworkView不是Panel，尝试找到其内部的容器
-                        var children = System.Windows.LogicalTreeHelper.GetChildren(_networkView);
-                        foreach (var child in children)
+                        // 尝试将NetworkView转换为Panel
+                        var panel = _networkView as System.Windows.Controls.Panel;
+                        if (panel != null)
                         {
-                            if (child is System.Windows.Controls.Panel childPanel)
-                            {
-                                childPanel.Children.Add(_connectionPreview);
-                                break;
-                            }
+                            panel.Children.Add(_connectionPreview);
                         }
+                        else
+                        {
+                            // 如果NetworkView不是Panel，尝试找到其内部的容器
+                            AddPreviewToParentContainer();
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Warn(ex, "无法将连接预览添加到NetworkView，将尝试替代方案");
+                        // 如果无法添加到NetworkView，可以考虑添加到父容器
+                        AddPreviewToParentContainer();
                     }
                 }
                 
@@ -281,9 +295,13 @@ namespace WorkflowDesigner.UI.Utilities
                     var hitTarget = GetHitTarget(_currentMousePosition);
                     bool isValidTarget = false;
                     
-                    if (hitTarget is PortView portView && portView.ViewModel is NodeInputViewModel inputPort)
+                    if (hitTarget is PortView portView)
                     {
-                        isValidTarget = ArePortsCompatible(_sourceOutput, inputPort);
+                        var inputPort = GetInputPortFromView(portView);
+                        if (inputPort != null)
+                        {
+                            isValidTarget = ArePortsCompatible(_sourceOutput, inputPort);
+                        }
                     }
                     
                     // 更新预览线
@@ -312,7 +330,8 @@ namespace WorkflowDesigner.UI.Utilities
                     _connectionPreview.Hide();
                     
                     // 从父容器中移除预览控件
-                    if (_connectionPreview.Parent is System.Windows.Controls.Panel parent)
+                    var parent = _connectionPreview.Parent as System.Windows.Controls.Panel;
+                    if (parent != null)
                     {
                         parent.Children.Remove(_connectionPreview);
                     }
@@ -409,6 +428,41 @@ namespace WorkflowDesigner.UI.Utilities
         }
 
         /// <summary>
+        /// 将预览控件添加到父容器中
+        /// </summary>
+        private void AddPreviewToParentContainer()
+        {
+            try
+            {
+                // 尝试找到NetworkView的父容器
+                var parent = _networkView.Parent as System.Windows.Controls.Panel;
+                if (parent != null)
+                {
+                    parent.Children.Add(_connectionPreview);
+                    return;
+                }
+
+                // 如果直接父容器不是Panel，尝试通过视觉树查找
+                var visualParent = VisualTreeHelper.GetParent(_networkView);
+                while (visualParent != null)
+                {
+                    if (visualParent is System.Windows.Controls.Panel visualPanel)
+                    {
+                        visualPanel.Children.Add(_connectionPreview);
+                        return;
+                    }
+                    visualParent = VisualTreeHelper.GetParent(visualParent);
+                }
+
+                Logger.Warn("无法找到合适的父容器来添加连接预览");
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex, "添加预览到父容器失败");
+            }
+        }
+
+        /// <summary>
         /// 创建端口高亮覆盖层
         /// </summary>
         private void CreatePortHighlightOverlay()
@@ -418,21 +472,23 @@ namespace WorkflowDesigner.UI.Utilities
                 _portHighlightOverlay = new PortHighlightOverlay(_networkView);
                 
                 // 将高亮覆盖层添加到NetworkView中
-                if (_networkView is System.Windows.Controls.Panel panel)
+                try
                 {
-                    panel.Children.Add(_portHighlightOverlay);
-                }
-                else
-                {
-                    var children = System.Windows.LogicalTreeHelper.GetChildren(_networkView);
-                    foreach (var child in children)
+                    var panel = _networkView as System.Windows.Controls.Panel;
+                    if (panel != null)
                     {
-                        if (child is System.Windows.Controls.Panel childPanel)
-                        {
-                            childPanel.Children.Add(_portHighlightOverlay);
-                            break;
-                        }
+                        panel.Children.Add(_portHighlightOverlay);
                     }
+                    else
+                    {
+                        // 尝试添加到父容器
+                        AddHighlightOverlayToParentContainer();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logger.Warn(ex, "无法将端口高亮覆盖层添加到NetworkView");
+                    AddHighlightOverlayToParentContainer();
                 }
                 
                 Logger.Debug("端口高亮覆盖层创建成功");
@@ -440,6 +496,41 @@ namespace WorkflowDesigner.UI.Utilities
             catch (Exception ex)
             {
                 Logger.Error(ex, "创建端口高亮覆盖层失败");
+            }
+        }
+
+        /// <summary>
+        /// 将高亮覆盖层添加到父容器中
+        /// </summary>
+        private void AddHighlightOverlayToParentContainer()
+        {
+            try
+            {
+                // 尝试找到NetworkView的父容器
+                var parent = _networkView.Parent as System.Windows.Controls.Panel;
+                if (parent != null)
+                {
+                    parent.Children.Add(_portHighlightOverlay);
+                    return;
+                }
+
+                // 如果直接父容器不是Panel，尝试通过视觉树查找
+                var visualParent = VisualTreeHelper.GetParent(_networkView);
+                while (visualParent != null)
+                {
+                    if (visualParent is System.Windows.Controls.Panel visualPanel)
+                    {
+                        visualPanel.Children.Add(_portHighlightOverlay);
+                        return;
+                    }
+                    visualParent = VisualTreeHelper.GetParent(visualParent);
+                }
+
+                Logger.Warn("无法找到合适的父容器来添加端口高亮覆盖层");
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex, "添加高亮覆盖层到父容器失败");
             }
         }
 
@@ -477,6 +568,38 @@ namespace WorkflowDesigner.UI.Utilities
         }
 
         /// <summary>
+        /// 检查端口视图是否为输出端口
+        /// </summary>
+        private NodeOutputViewModel GetOutputPortFromView(PortView portView)
+        {
+            try
+            {
+                return portView?.ViewModel as NodeOutputViewModel;
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex, "获取输出端口失败");
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// 检查端口视图是否为输入端口
+        /// </summary>
+        private NodeInputViewModel GetInputPortFromView(PortView portView)
+        {
+            try
+            {
+                return portView?.ViewModel as NodeInputViewModel;
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex, "获取输入端口失败");
+                return null;
+            }
+        }
+
+        /// <summary>
         /// 释放资源
         /// </summary>
         public void Dispose()
@@ -495,7 +618,8 @@ namespace WorkflowDesigner.UI.Utilities
                 // 清理端口高亮覆盖层
                 if (_portHighlightOverlay != null)
                 {
-                    if (_portHighlightOverlay.Parent is System.Windows.Controls.Panel parent)
+                    var parent = _portHighlightOverlay.Parent as System.Windows.Controls.Panel;
+                    if (parent != null)
                     {
                         parent.Children.Remove(_portHighlightOverlay);
                     }
