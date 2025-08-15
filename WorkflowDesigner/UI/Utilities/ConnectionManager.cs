@@ -1,4 +1,4 @@
-﻿using DynamicData;
+using DynamicData;
 using NLog;
 using NodeNetwork.ViewModels;
 using System;
@@ -45,24 +45,189 @@ namespace WorkflowDesigner.UI.Utilities
                     return false;
                 }
 
-                // 如果目标端口已有连接且不允许多输入，先移除现有连接
-                if (!targetNode.AllowMultipleInputs)
-                {
-                    RemoveConnectionsToInput(targetInput);
-                }
-
-                // 创建新连接
-                var connection = new ConnectionViewModel(_network, targetInput, sourceOutput);
-                _network.Connections.Add(connection);
-
-                Logger.Info($"成功创建连接: {sourceNode.NodeName} -> {targetNode.NodeName}");
-                return true;
+                return CreatePortConnection(sourceOutput, targetInput);
             }
             catch (Exception ex)
             {
                 Logger.Error(ex, "创建连接时发生错误");
                 return false;
             }
+        }
+
+        /// <summary>
+        /// 创建指定端口之间的连接
+        /// </summary>
+        public bool CreatePortConnection(NodeOutputViewModel sourceOutput, NodeInputViewModel targetInput)
+        {
+            try
+            {
+                if (sourceOutput?.Parent is WorkflowNodeViewModel sourceNode && 
+                    targetInput?.Parent is WorkflowNodeViewModel targetNode)
+                {
+                    // 验证端口连接的有效性
+                    if (!IsValidPortConnection(sourceOutput, targetInput, out string errorMessage))
+                    {
+                        Logger.Warn($"无效端口连接: {errorMessage}");
+                        return false;
+                    }
+
+                    // 如果目标端口已有连接且不允许多输入，先移除现有连接
+                    if (!targetNode.AllowMultipleInputs)
+                    {
+                        RemoveConnectionsToInput(targetInput);
+                    }
+
+                    // 创建新连接
+                    var connection = new ConnectionViewModel(_network, targetInput, sourceOutput);
+                    _network.Connections.Add(connection);
+
+                    Logger.Info($"成功创建端口连接: {sourceNode.NodeName}({sourceOutput.Name}) -> {targetNode.NodeName}({targetInput.Name})");
+                    return true;
+                }
+                
+                Logger.Warn("端口连接失败: 端口所属节点无效");
+                return false;
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex, "创建端口连接时发生错误");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 检查端口连接是否有效
+        /// </summary>
+        public bool IsValidPortConnection(NodeOutputViewModel sourceOutput, NodeInputViewModel targetInput, out string errorMessage)
+        {
+            errorMessage = null;
+
+            if (sourceOutput == null || targetInput == null)
+            {
+                errorMessage = "源端口或目标端口为空";
+                return false;
+            }
+
+            if (sourceOutput.Parent == targetInput.Parent)
+            {
+                errorMessage = "不能连接同一个节点的端口";
+                return false;
+            }
+
+            // 检查端口类型兼容性
+            if (!ArePortTypesCompatible(sourceOutput, targetInput))
+            {
+                errorMessage = "端口类型不兼容";
+                return false;
+            }
+
+            // 检查是否已存在相同的端口连接
+            if (PortConnectionExists(sourceOutput, targetInput))
+            {
+                errorMessage = "端口连接已存在";
+                return false;
+            }
+
+            // 使用节点级别的验证逻辑
+            if (sourceOutput.Parent is WorkflowNodeViewModel sourceNode && 
+                targetInput.Parent is WorkflowNodeViewModel targetNode)
+            {
+                return IsValidConnection(sourceNode, targetNode, out errorMessage);
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// 检查端口类型是否兼容
+        /// </summary>
+        private bool ArePortTypesCompatible(NodeOutputViewModel output, NodeInputViewModel input)
+        {
+            // 基本类型检查 - 这里可以根据具体需求扩展
+            // 例如检查数据类型、值类型等
+            
+            // 对于当前的工作流节点，大部分端口都使用object类型，所以暂时返回true
+            // 在实际应用中，可以根据端口的具体类型进行更精确的匹配
+            return true;
+        }
+
+        /// <summary>
+        /// 检查指定端口之间是否已存在连接
+        /// </summary>
+        private bool PortConnectionExists(NodeOutputViewModel output, NodeInputViewModel input)
+        {
+            return _network.Connections.Items.Any(c => c.Output == output && c.Input == input);
+        }
+
+        /// <summary>
+        /// 获取输入端口的所有连接
+        /// </summary>
+        public IEnumerable<ConnectionViewModel> GetInputConnections(NodeInputViewModel input)
+        {
+            return _network.Connections.Items.Where(c => c.Input == input);
+        }
+
+        /// <summary>
+        /// 获取输出端口的所有连接
+        /// </summary>
+        public IEnumerable<ConnectionViewModel> GetOutputConnections(NodeOutputViewModel output)
+        {
+            return _network.Connections.Items.Where(c => c.Output == output);
+        }
+
+        /// <summary>
+        /// 移除指定的端口连接
+        /// </summary>
+        public bool RemovePortConnection(NodeOutputViewModel output, NodeInputViewModel input)
+        {
+            try
+            {
+                var connection = _network.Connections.Items.FirstOrDefault(c => c.Output == output && c.Input == input);
+                if (connection != null)
+                {
+                    _network.Connections.Remove(connection);
+                    Logger.Info($"移除端口连接: {output.Parent.Name}({output.Name}) -> {input.Parent.Name}({input.Name})");
+                    return true;
+                }
+                return false;
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex, "移除端口连接失败");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 检查输入端口是否已连接
+        /// </summary>
+        public bool IsInputPortConnected(NodeInputViewModel input)
+        {
+            return _network.Connections.Items.Any(c => c.Input == input);
+        }
+
+        /// <summary>
+        /// 检查输出端口是否已连接
+        /// </summary>
+        public bool IsOutputPortConnected(NodeOutputViewModel output)
+        {
+            return _network.Connections.Items.Any(c => c.Output == output);
+        }
+
+        /// <summary>
+        /// 获取节点的所有输入端口连接数
+        /// </summary>
+        public int GetNodeInputConnectionCount(WorkflowNodeViewModel node)
+        {
+            return _network.Connections.Items.Count(c => c.Input?.Parent == node);
+        }
+
+        /// <summary>
+        /// 获取节点的所有输出端口连接数
+        /// </summary>
+        public int GetNodeOutputConnectionCount(WorkflowNodeViewModel node)
+        {
+            return _network.Connections.Items.Count(c => c.Output?.Parent == node);
         }
 
         /// <summary>
