@@ -72,12 +72,17 @@ namespace WorkflowDesigner.UI.Utilities
                 // 检查是否点击了输出端口
                 if (hitTarget is PortView portView)
                 {
-                    var outputPort = GetOutputPortFromView(portView);
-                    if (outputPort != null)
-                    {
-                        StartConnection(outputPort, e.GetPosition(_networkView));
-                        e.Handled = true;
-                    }
+                    Logger.Debug($"点击了端口视图，ViewModel类型: {portView.ViewModel?.GetType().Name}");
+                    
+                    // 暂时禁用连接功能，直到我们解决类型转换问题
+                    // var outputPort = GetOutputPortFromView(portView);
+                    // if (outputPort != null)
+                    // {
+                    //     StartConnection(outputPort, e.GetPosition(_networkView));
+                    //     e.Handled = true;
+                    // }
+                    
+                    e.Handled = true; // 防止事件继续传播
                 }
             }
             catch (Exception ex)
@@ -119,15 +124,20 @@ namespace WorkflowDesigner.UI.Utilities
                     // 检查是否释放在输入端口上
                     if (hitTarget is PortView portView)
                     {
-                        var inputPort = GetInputPortFromView(portView);
-                        if (inputPort != null)
-                        {
-                            CompleteConnection(inputPort);
-                        }
-                        else
-                        {
-                            CancelConnection();
-                        }
+                        Logger.Debug($"释放在端口视图上，ViewModel类型: {portView.ViewModel?.GetType().Name}");
+                        
+                        // 暂时直接取消连接
+                        CancelConnection();
+                        
+                        // var inputPort = GetInputPortFromView(portView);
+                        // if (inputPort != null)
+                        // {
+                        //     CompleteConnection(inputPort);
+                        // }
+                        // else
+                        // {
+                        //     CancelConnection();
+                        // }
                     }
                     else
                     {
@@ -145,7 +155,7 @@ namespace WorkflowDesigner.UI.Utilities
         }
 
         /// <summary>
-        /// 开始连接操作
+        /// 开始连接操作（当前暂时禁用）
         /// </summary>
         private void StartConnection(NodeOutputViewModel sourceOutput, Point startPosition)
         {
@@ -175,7 +185,7 @@ namespace WorkflowDesigner.UI.Utilities
         }
 
         /// <summary>
-        /// 完成连接操作
+        /// 完成连接操作（当前暂时禁用）
         /// </summary>
         private void CompleteConnection(NodeInputViewModel targetInput)
         {
@@ -247,28 +257,9 @@ namespace WorkflowDesigner.UI.Utilities
                 {
                     _connectionPreview = new ConnectionPreviewControl();
                     
-                    // 将预览控件添加到NetworkView中
-                    // NetworkView可能不直接继承自Panel，需要找到合适的容器
-                    try
-                    {
-                        // 尝试将NetworkView转换为Panel
-                        var panel = _networkView as System.Windows.Controls.Panel;
-                        if (panel != null)
-                        {
-                            panel.Children.Add(_connectionPreview);
-                        }
-                        else
-                        {
-                            // 如果NetworkView不是Panel，尝试找到其内部的容器
-                            AddPreviewToParentContainer();
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Logger.Warn(ex, "无法将连接预览添加到NetworkView，将尝试替代方案");
-                        // 如果无法添加到NetworkView，可以考虑添加到父容器
-                        AddPreviewToParentContainer();
-                    }
+                    // NetworkView不是Panel类型，需要添加到其父容器中
+                    // 直接尝试添加到父容器
+                    AddPreviewToParentContainer();
                 }
                 
                 // 显示预览
@@ -297,11 +288,13 @@ namespace WorkflowDesigner.UI.Utilities
                     
                     if (hitTarget is PortView portView)
                     {
-                        var inputPort = GetInputPortFromView(portView);
-                        if (inputPort != null)
-                        {
-                            isValidTarget = ArePortsCompatible(_sourceOutput, inputPort);
-                        }
+                        // 暂时设置为无效目标，直到我们解决类型转换问题
+                        // var inputPort = GetInputPortFromView(portView);
+                        // if (inputPort != null)
+                        // {
+                        //     isValidTarget = ArePortsCompatible(_sourceOutput, inputPort);
+                        // }
+                        isValidTarget = false;
                     }
                     
                     // 更新预览线
@@ -471,25 +464,8 @@ namespace WorkflowDesigner.UI.Utilities
             {
                 _portHighlightOverlay = new PortHighlightOverlay(_networkView);
                 
-                // 将高亮覆盖层添加到NetworkView中
-                try
-                {
-                    var panel = _networkView as System.Windows.Controls.Panel;
-                    if (panel != null)
-                    {
-                        panel.Children.Add(_portHighlightOverlay);
-                    }
-                    else
-                    {
-                        // 尝试添加到父容器
-                        AddHighlightOverlayToParentContainer();
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Logger.Warn(ex, "无法将端口高亮覆盖层添加到NetworkView");
-                    AddHighlightOverlayToParentContainer();
-                }
+                // NetworkView不是Panel类型，直接添加到父容器
+                AddHighlightOverlayToParentContainer();
                 
                 Logger.Debug("端口高亮覆盖层创建成功");
             }
@@ -568,13 +544,35 @@ namespace WorkflowDesigner.UI.Utilities
         }
 
         /// <summary>
-        /// 检查端口视图是否为输出端口
+        /// 检查端口视图是否为输出端口，并获取对应的NodeOutputViewModel
         /// </summary>
         private NodeOutputViewModel GetOutputPortFromView(PortView portView)
         {
             try
             {
-                return portView?.ViewModel as NodeOutputViewModel;
+                if (portView?.ViewModel == null) return null;
+                
+                // 由于PortView.ViewModel是PortViewModel类型，无法直接转换
+                // 我们需要通过反射或其他方式来获取实际的端口对象
+                var viewModel = portView.ViewModel;
+                
+                // 尝试通过反射获取实际的端口对象
+                var portProperty = viewModel.GetType().GetProperty("Port");
+                if (portProperty != null)
+                {
+                    var port = portProperty.GetValue(viewModel);
+                    if (port is NodeOutputViewModel outputPort)
+                    {
+                        return outputPort;
+                    }
+                }
+                
+                // 如果反射失败，检查类型名称来判断
+                var typeName = viewModel.GetType().Name;
+                Logger.Debug($"端口类型: {typeName}");
+                
+                // 这里需要更深入了解NodeNetwork的结构
+                return null;
             }
             catch (Exception ex)
             {
@@ -584,13 +582,33 @@ namespace WorkflowDesigner.UI.Utilities
         }
 
         /// <summary>
-        /// 检查端口视图是否为输入端口
+        /// 检查端口视图是否为输入端口，并获取对应的NodeInputViewModel
         /// </summary>
         private NodeInputViewModel GetInputPortFromView(PortView portView)
         {
             try
             {
-                return portView?.ViewModel as NodeInputViewModel;
+                if (portView?.ViewModel == null) return null;
+                
+                // 由于PortView.ViewModel是PortViewModel类型，无法直接转换
+                var viewModel = portView.ViewModel;
+                
+                // 尝试通过反射获取实际的端口对象
+                var portProperty = viewModel.GetType().GetProperty("Port");
+                if (portProperty != null)
+                {
+                    var port = portProperty.GetValue(viewModel);
+                    if (port is NodeInputViewModel inputPort)
+                    {
+                        return inputPort;
+                    }
+                }
+                
+                // 如果反射失败，检查类型名称来判断
+                var typeName = viewModel.GetType().Name;
+                Logger.Debug($"端口类型: {typeName}");
+                
+                return null;
             }
             catch (Exception ex)
             {

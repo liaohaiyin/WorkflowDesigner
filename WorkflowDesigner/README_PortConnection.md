@@ -166,6 +166,22 @@ public event EventHandler<ConnectionRemovedEventArgs> ConnectionRemoved;
 3. **线程安全**：UI操作需要在主线程执行
 4. **兼容性**：依赖NodeNetwork库的特定版本
 
+## ⚠️ 当前状态警告
+
+**重要**: 由于NodeNetwork库的类型兼容性问题，端口连接功能当前暂时禁用。
+
+### 已知问题
+- `PortView.ViewModel` 是 `PortViewModel` 类型，无法直接转换为 `NodeInputViewModel` 或 `NodeOutputViewModel`
+- `NetworkView` 不是 `Panel` 类型，无法直接添加子控件
+
+### 当前功能状态
+- ✅ 基础框架和事件处理正常
+- ✅ 连接管理器功能完整
+- ⚠️ 实际端口连接创建暂时禁用
+- ⚠️ 连接预览和高亮功能受限
+
+详细信息请参考 `CURRENT_LIMITATIONS.md` 文件。
+
 ## 故障排除
 
 ### 常见问题
