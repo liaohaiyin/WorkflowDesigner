@@ -126,10 +126,7 @@ namespace WorkflowDesigner.UI.Views.Nodes
                 {
                     // 记录拖拽开始位置
                     _dragStartPoint = e.GetPosition(_parentCanvas);
-                    _nodeStartPosition = new Point(
-                        Canvas.GetLeft(this),
-                        Canvas.GetTop(this)
-                    );
+                    _nodeStartPosition = nodeViewModel.Position;
 
                     // 处理节点选择
                     if (Keyboard.Modifiers.HasFlag(ModifierKeys.Control))

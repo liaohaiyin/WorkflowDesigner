@@ -97,8 +97,8 @@
             <Grid x:Name="DesignerCanvas">
                 <!-- 网格背景 -->
                 <Rectangle x:Name="GridBackground"
-                Fill="{StaticResource GridBrush}"
-                Visibility="{Binding ElementName=ShowGridCheckBox, Path=IsChecked, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                           Fill="{StaticResource GridBrush}"
+                           Visibility="{Binding ElementName=ShowGridCheckBox, Path=IsChecked, Converter={StaticResource BooleanToVisibilityConverter}}"/>
 
                 <!-- NodeNetwork视图 -->
                 <nodenetwork:NetworkView  Grid.Row="1" x:Name="networkView" 
@@ -106,7 +106,6 @@
                              Background="Transparent"
                              HorizontalAlignment="Stretch"
                              VerticalAlignment="Stretch"/>
-
                 <!-- 选择框 -->
                 <Rectangle x:Name="SelectionRectangle" 
                            Fill="LightBlue" Opacity="0.3" 

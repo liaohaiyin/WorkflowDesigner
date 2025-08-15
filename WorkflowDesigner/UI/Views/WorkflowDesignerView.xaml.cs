@@ -27,6 +27,7 @@ namespace WorkflowDesigner.UI.Views
         {
             InitializeComponent();
             Loaded += OnLoaded;
+            Unloaded += OnUnloaded; ;
 
             // 设置鼠标事件处理
             MouseMove += OnMouseMove;
@@ -39,6 +40,28 @@ namespace WorkflowDesigner.UI.Views
 
             // 确保控件可以接收键盘焦点
             Focusable = true;
+        }
+
+        private void OnUnloaded(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                // 清理端口连接处理器
+                _portConnectionHandler?.Dispose();
+                _portConnectionHandler = null;
+                _connectionManager = null;
+
+                // 取消事件订阅
+                if (ViewModel != null)
+                {
+                    ViewModel.NodeSelectionChanged -= OnNodeSelectionChanged;
+                    ViewModel.NodeMoved -= OnNodeMoved;
+                }
+            }
+            catch (Exception ex)
+            {
+                UpdateStatusText($"清理资源失败: {ex.Message}");
+            }
         }
 
         private void OnLoaded(object sender, RoutedEventArgs e)
@@ -909,37 +932,6 @@ namespace WorkflowDesigner.UI.Views
             if (StatusText != null)
             {
                 StatusText.Text = message;
-            }
-        }
-
-        #endregion
-
-        #region 资源清理
-
-        /// <summary>
-        /// 清理资源
-        /// </summary>
-        protected override void OnUnloaded(RoutedEventArgs e)
-        {
-            try
-            {
-                // 清理端口连接处理器
-                _portConnectionHandler?.Dispose();
-                _portConnectionHandler = null;
-                _connectionManager = null;
-
-                // 取消事件订阅
-                if (ViewModel != null)
-                {
-                    ViewModel.NodeSelectionChanged -= OnNodeSelectionChanged;
-                    ViewModel.NodeMoved -= OnNodeMoved;
-                }
-
-                base.OnUnloaded(e);
-            }
-            catch (Exception ex)
-            {
-                UpdateStatusText($"清理资源失败: {ex.Message}");
             }
         }
 
