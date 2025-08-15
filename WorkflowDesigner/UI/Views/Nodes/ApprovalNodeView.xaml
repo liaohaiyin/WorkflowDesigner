@@ -28,31 +28,30 @@
                        Margin="3" Foreground="#1A237E"/>
 
             <Rectangle Grid.Row="2" Height="3" Fill="{Binding StatusBrush}" Margin="3"/>
-        </Grid>
+            <!-- 输入端口区域 -->
+            <Grid Grid.Row="0" HorizontalAlignment="Left" Margin="5,5,0,0">
+                <nodenetwork:NodeInputView ViewModel="{Binding Inputs[0]}"
+                                Width="16" Height="16"
+                                Cursor="Hand"
+                                ToolTip="输入端口 - 接收连接"/>
+            </Grid>
 
-        <!-- 输入端口区域 -->
-        <Grid Grid.Row="0" HorizontalAlignment="Left" Margin="5,5,0,0">
-            <nodenetwork:NodeInputView ViewModel="{Binding Inputs[0]}"
-                                       Width="16" Height="16"
-                                       Cursor="Hand"
-                                       ToolTip="输入端口 - 接收连接"/>
-        </Grid>
-
-        <!-- 输出端口区域 - 审批节点通常有两个输出（通过/拒绝） -->
-        <Grid Grid.Row="2" HorizontalAlignment="Right" Margin="0,0,5,5">
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                <!-- 通过输出端口 -->
-                <nodenetwork:NodeOutputView ViewModel="{Binding Outputs[0]}"
-                                            Width="16" Height="16"
-                                            Margin="0,0,5,0"
-                                            Cursor="Hand"
-                                            ToolTip="通过输出端口 - 拖拽创建连接"/>
-                <!-- 拒绝输出端口 -->
-                <nodenetwork:NodeOutputView ViewModel="{Binding Outputs[1]}"
-                                            Width="16" Height="16"
-                                            Cursor="Hand"
-                                            ToolTip="拒绝输出端口 - 拖拽创建连接"/>
-            </StackPanel>
+            <!-- 输出端口区域 - 审批节点通常有两个输出（通过/拒绝） -->
+            <Grid Grid.Row="2" HorizontalAlignment="Right" Margin="0,0,5,5">
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <!-- 通过输出端口 -->
+                    <nodenetwork:NodeOutputView ViewModel="{Binding Outputs[0]}"
+                                     Width="16" Height="16"
+                                     Margin="0,0,5,0"
+                                     Cursor="Hand"
+                                     ToolTip="通过输出端口 - 拖拽创建连接"/>
+                    <!-- 拒绝输出端口 -->
+                    <nodenetwork:NodeOutputView ViewModel="{Binding Outputs[1]}"
+                                     Width="16" Height="16"
+                                     Cursor="Hand"
+                                     ToolTip="拒绝输出端口 - 拖拽创建连接"/>
+                </StackPanel>
+            </Grid>
         </Grid>
     </Border>
 </local:DraggableNodeViewBase>

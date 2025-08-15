@@ -28,22 +28,21 @@
                        Margin="3" Foreground="#004D40"/>
 
             <Rectangle Grid.Row="2" Height="3" Fill="{Binding StatusBrush}" Margin="3"/>
-        </Grid>
+            <!-- 输入端口区域 -->
+            <Grid Grid.Row="0" HorizontalAlignment="Left" Margin="5,5,0,0">
+                <nodenetwork:NodeInputView ViewModel="{Binding Inputs[0]}"
+                                Width="16" Height="16"
+                                Cursor="Hand"
+                                ToolTip="输入端口 - 接收连接"/>
+            </Grid>
 
-        <!-- 输入端口区域 -->
-        <Grid Grid.Row="0" HorizontalAlignment="Left" Margin="5,5,0,0">
-            <nodenetwork:NodeInputView ViewModel="{Binding Inputs[0]}"
-                                       Width="16" Height="16"
-                                       Cursor="Hand"
-                                       ToolTip="输入端口 - 接收连接"/>
-        </Grid>
-
-        <!-- 输出端口区域 -->
-        <Grid Grid.Row="2" HorizontalAlignment="Right" Margin="0,0,5,5">
-            <nodenetwork:NodeOutputView ViewModel="{Binding Outputs[0]}"
-                                        Width="16" Height="16"
-                                        Cursor="Hand"
-                                        ToolTip="输出端口 - 拖拽创建连接"/>
+            <!-- 输出端口区域 -->
+            <Grid Grid.Row="2" HorizontalAlignment="Right" Margin="0,0,5,5">
+                <nodenetwork:NodeOutputView ViewModel="{Binding Outputs[0]}"
+                                 Width="16" Height="16"
+                                 Cursor="Hand"
+                                 ToolTip="输出端口 - 拖拽创建连接"/>
+            </Grid>
         </Grid>
     </Border>
 </local:DraggableNodeViewBase>

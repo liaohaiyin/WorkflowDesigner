@@ -37,7 +37,7 @@ namespace WorkflowDesigner.UI.ViewModels
             {
                 // 创建默认的服务实例
                 CreateDefaultServices();
-                InitializeViewModels();
+                //InitializeViewModels();
                 InitializeCommands();
                 StartTimeTimer();
                 SetupEventHandlers();

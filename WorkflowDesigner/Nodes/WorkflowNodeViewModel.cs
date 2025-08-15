@@ -937,7 +937,6 @@ namespace WorkflowDesigner.Nodes
             }
         }
     }
-
     #endregion
 
     public class WorkflowNodeInputViewModel : NodeInputViewModel

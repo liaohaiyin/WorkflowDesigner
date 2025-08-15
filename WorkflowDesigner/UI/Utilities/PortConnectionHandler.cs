@@ -552,7 +552,6 @@ namespace WorkflowDesigner.UI.Utilities
             try
             {
                 if (portView?.ViewModel == null) return null;
-
                 // 由于PortView.ViewModel是PortViewModel类型，无法直接转换
                 // 我们需要通过反射或其他方式来获取实际的端口对象
                 var viewModel = portView.ViewModel;

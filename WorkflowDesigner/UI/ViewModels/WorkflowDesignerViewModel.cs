@@ -17,6 +17,7 @@ using WorkflowDesigner.Core.Models;
 using WorkflowDesigner.Core.Services;
 using WorkflowDesigner.Engine;
 using WorkflowDesigner.Nodes;
+using WorkflowDesigner.UI.Utilities;
 
 namespace WorkflowDesigner.UI.ViewModels
 {
@@ -138,6 +139,61 @@ namespace WorkflowDesigner.UI.ViewModels
             {
                 Network = new NetworkViewModel();
                 Logger.Debug("NetworkViewModel 创建成功");
+
+
+                // 创建开始节点
+                var startNode = new StartNodeViewModel
+                {
+                    NodeName = "工作流开始",
+                    Position = new Point(100, 100)
+                };
+
+                // 创建任务节点
+                var taskNode = new TaskNodeViewModel
+                {
+                    NodeName = "执行任务",
+                    Position = new Point(300, 100),
+                    TaskName = "数据处理",
+                    TaskType = "Auto"
+                };
+
+                // 创建判断节点
+                var decisionNode = new DecisionNodeViewModel
+                {
+                    NodeName = "结果判断",
+                    Position = new Point(500, 100),
+                    ConditionExpression = "result > 0"
+                };
+
+                // 创建结束节点
+                var endNode = new EndNodeViewModel
+                {
+                    NodeName = "工作流结束",
+                    Position = new Point(700, 100)
+                };
+                // 添加节点到网络
+                Network.Nodes.Add(startNode);
+                Network.Nodes.Add(taskNode);
+                Network.Nodes.Add(decisionNode);
+                Network.Nodes.Add(endNode);
+
+                var connectionManager = new ConnectionManager(Network);
+
+                // 连接开始节点到任务节点
+                var startToTask = connectionManager.CreateConnection(startNode, taskNode);
+                if (startToTask)
+                {
+                    Console.WriteLine("开始节点 -> 任务节点 连接成功");
+                }
+
+                // 连接任务节点到判断节点
+                var taskToDecision = connectionManager.CreateConnection(taskNode, decisionNode);
+                if (taskToDecision)
+                {
+                    Console.WriteLine("任务节点 -> 判断节点 连接成功");
+                }
+
+               
             }
             catch (MissingMethodException ex)
             {
