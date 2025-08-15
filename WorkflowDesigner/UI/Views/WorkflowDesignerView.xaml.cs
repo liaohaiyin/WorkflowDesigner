@@ -1,10 +1,11 @@
-﻿using System;
+using System;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using WorkflowDesigner.UI.ViewModels;
+using WorkflowDesigner.UI.Utilities;
 using WorkflowDesigner.Nodes;
 
 namespace WorkflowDesigner.UI.Views
@@ -17,6 +18,10 @@ namespace WorkflowDesigner.UI.Views
         private bool _isNodeDragging;
         private WorkflowNodeViewModel _draggingNode;
         private const double NODE_SELECTION_TOLERANCE = 75; // 节点选择容差（像素）
+        
+        // 端口连接处理器
+        private PortConnectionHandler _portConnectionHandler;
+        private ConnectionManager _connectionManager;
 
         public WorkflowDesignerView()
         {
@@ -45,6 +50,33 @@ namespace WorkflowDesigner.UI.Views
             {
                 ViewModel.NodeSelectionChanged += OnNodeSelectionChanged;
                 ViewModel.NodeMoved += OnNodeMoved;
+                
+                // 初始化端口连接功能
+                InitializePortConnection();
+            }
+        }
+        
+        /// <summary>
+        /// 初始化端口连接功能
+        /// </summary>
+        private void InitializePortConnection()
+        {
+            try
+            {
+                if (ViewModel?.Network != null && networkView != null)
+                {
+                    // 创建连接管理器
+                    _connectionManager = new ConnectionManager(ViewModel.Network);
+                    
+                    // 创建端口连接处理器
+                    _portConnectionHandler = new PortConnectionHandler(networkView, ViewModel.Network, _connectionManager);
+                    
+                    UpdateStatusText("端口连接功能已初始化");
+                }
+            }
+            catch (Exception ex)
+            {
+                UpdateStatusText($"初始化端口连接功能失败: {ex.Message}");
             }
         }
 
@@ -877,6 +909,37 @@ namespace WorkflowDesigner.UI.Views
             if (StatusText != null)
             {
                 StatusText.Text = message;
+            }
+        }
+
+        #endregion
+
+        #region 资源清理
+
+        /// <summary>
+        /// 清理资源
+        /// </summary>
+        protected override void OnUnloaded(RoutedEventArgs e)
+        {
+            try
+            {
+                // 清理端口连接处理器
+                _portConnectionHandler?.Dispose();
+                _portConnectionHandler = null;
+                _connectionManager = null;
+
+                // 取消事件订阅
+                if (ViewModel != null)
+                {
+                    ViewModel.NodeSelectionChanged -= OnNodeSelectionChanged;
+                    ViewModel.NodeMoved -= OnNodeMoved;
+                }
+
+                base.OnUnloaded(e);
+            }
+            catch (Exception ex)
+            {
+                UpdateStatusText($"清理资源失败: {ex.Message}");
             }
         }
 
