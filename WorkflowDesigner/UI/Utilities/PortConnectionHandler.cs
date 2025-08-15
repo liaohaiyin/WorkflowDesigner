@@ -85,6 +85,27 @@ namespace WorkflowDesigner.UI.Utilities
 
                     e.Handled = true; // 防止事件继续传播
                 }
+                else if (hitTarget is PortElementWrapper portWrapper)
+                {
+                    Logger.Debug($"点击了StartNodeView端口元素");
+
+                    // 处理StartNodeView的端口点击
+                    if (portWrapper.IsOutputPort())
+                    {
+                        // 获取StartNodeViewModel
+                        var startNode = GetStartNodeFromWrapper(portWrapper);
+                        if (startNode != null)
+                        {
+                            // 获取输出端口
+                            var outputPort = startNode.Outputs.FirstOrDefault();
+                            if (outputPort != null)
+                            {
+                                StartConnection(outputPort, e.GetPosition(_networkView));
+                                e.Handled = true;
+                            }
+                        }
+                    }
+                }
             }
             catch (Exception ex)
             {
@@ -99,10 +120,37 @@ namespace WorkflowDesigner.UI.Utilities
         {
             try
             {
+                _currentMousePosition = e.GetPosition(_networkView);
+
                 if (_isConnecting)
                 {
-                    _currentMousePosition = e.GetPosition(_networkView);
                     UpdateConnectionPreview();
+                }
+                else
+                {
+                    // 检查鼠标是否悬停在端口上
+                    var hitTarget = GetHitTarget(_currentMousePosition);
+                    if (hitTarget is PortView portView)
+                    {
+                        // 处理标准PortView的悬停
+                        // var inputPort = GetInputPortFromView(portView);
+                        // if (inputPort != null)
+                        // {
+                        //     _portHighlightOverlay?.HighlightCompatibleInputPorts(_sourceOutput, _connectionManager);
+                        // }
+                    }
+                    else if (hitTarget is PortElementWrapper portWrapper)
+                    {
+                        // 处理StartNodeView端口的悬停
+                        if (portWrapper.IsInputPort())
+                        {
+                            // 高亮显示兼容的输入端口
+                            if (_sourceOutput != null)
+                            {
+                                _portHighlightOverlay?.HighlightCompatibleInputPorts(_sourceOutput, _connectionManager);
+                            }
+                        }
+                    }
                 }
             }
             catch (Exception ex)
@@ -134,6 +182,38 @@ namespace WorkflowDesigner.UI.Utilities
                         if (inputPort != null)
                         {
                             CompleteConnection(inputPort);
+                        }
+                        else
+                        {
+                            CancelConnection();
+                        }
+                    }
+                    else if (hitTarget is PortElementWrapper portWrapper)
+                    {
+                        Logger.Debug($"释放在StartNodeView端口元素上");
+
+                        // 处理StartNodeView端口的释放
+                        if (portWrapper.IsInputPort())
+                        {
+                            // 获取StartNodeViewModel
+                            var startNode = GetStartNodeFromWrapper(portWrapper);
+                            if (startNode != null)
+                            {
+                                // 获取输入端口
+                                var inputPort = startNode.Inputs.FirstOrDefault();
+                                if (inputPort != null)
+                                {
+                                    CompleteConnection(inputPort);
+                                }
+                                else
+                                {
+                                    CancelConnection();
+                                }
+                            }
+                            else
+                            {
+                                CancelConnection();
+                            }
                         }
                         else
                         {
@@ -348,11 +428,80 @@ namespace WorkflowDesigner.UI.Utilities
             try
             {
                 var hitTest = VisualTreeHelper.HitTest(_networkView, position);
-                return hitTest?.VisualHit as Visual;
+                var hitVisual = hitTest?.VisualHit as Visual;
+                
+                if (hitVisual != null)
+                {
+                    // 检查是否是StartNodeView的端口
+                    var portElement = FindPortElement(hitVisual);
+                    if (portElement != null)
+                    {
+                        return portElement;
+                    }
+                }
+                
+                return hitVisual;
             }
             catch (Exception ex)
             {
                 Logger.Error(ex, "获取命中目标失败");
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// 查找端口元素（包括StartNodeView的端口）
+        /// </summary>
+        private Visual FindPortElement(Visual hitVisual)
+        {
+            try
+            {
+                // 检查是否是Ellipse（StartNodeView的端口）
+                if (hitVisual is System.Windows.Shapes.Ellipse ellipse)
+                {
+                    // 检查父级是否是StartNodeView
+                    var parent = VisualTreeHelper.GetParent(ellipse);
+                    while (parent != null)
+                    {
+                        if (parent.GetType().Name == "StartNodeView")
+                        {
+                            // 创建一个包装器来模拟PortView
+                            return new PortElementWrapper(ellipse, parent);
+                        }
+                        parent = VisualTreeHelper.GetParent(parent);
+                    }
+                }
+                
+                return null;
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex, "查找端口元素失败");
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// 从PortElementWrapper获取StartNodeViewModel
+        /// </summary>
+        private StartNodeViewModel GetStartNodeFromWrapper(PortElementWrapper portWrapper)
+        {
+            try
+            {
+                if (portWrapper?.ParentNode != null)
+                {
+                    // 获取StartNodeView的DataContext
+                    var startNodeView = portWrapper.ParentNode as FrameworkElement;
+                    if (startNodeView?.DataContext is StartNodeViewModel startNode)
+                    {
+                        return startNode;
+                    }
+                }
+                return null;
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex, "从PortElementWrapper获取StartNodeViewModel失败");
                 return null;
             }
         }
@@ -651,6 +800,81 @@ namespace WorkflowDesigner.UI.Utilities
             {
                 Logger.Error(ex, "释放PortConnectionHandler失败");
             }
+        }
+    }
+
+    /// <summary>
+    /// 端口元素包装器 - 用于包装StartNodeView的端口元素，使其能够被PortConnectionHandler识别
+    /// </summary>
+    public class PortElementWrapper : Visual
+    {
+        private readonly System.Windows.Shapes.Ellipse _portElement;
+        private readonly DependencyObject _parentNode;
+
+        public PortElementWrapper(System.Windows.Shapes.Ellipse portElement, DependencyObject parentNode)
+        {
+            _portElement = portElement ?? throw new ArgumentNullException(nameof(portElement));
+            _parentNode = parentNode ?? throw new ArgumentNullException(nameof(parentNode));
+        }
+
+        /// <summary>
+        /// 获取端口元素
+        /// </summary>
+        public System.Windows.Shapes.Ellipse PortElement => _portElement;
+
+        /// <summary>
+        /// 获取父级节点
+        /// </summary>
+        public DependencyObject ParentNode => _parentNode;
+
+        /// <summary>
+        /// 获取端口位置
+        /// </summary>
+        public Point GetPortPosition()
+        {
+            try
+            {
+                if (_portElement != null)
+                {
+                    var transform = _portElement.TransformToAncestor(_parentNode);
+                    var portCenter = new Point(_portElement.ActualWidth / 2, _portElement.ActualHeight / 2);
+                    return transform.Transform(portCenter);
+                }
+                return new Point(0, 0);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"获取端口位置失败: {ex.Message}");
+                return new Point(0, 0);
+            }
+        }
+
+        /// <summary>
+        /// 检查是否是输出端口
+        /// </summary>
+        public bool IsOutputPort()
+        {
+            try
+            {
+                // 检查父级是否是StartNodeView（开始节点只有输出端口）
+                if (_parentNode is WorkflowDesigner.UI.Views.Nodes.StartNodeView)
+                {
+                    return true;
+                }
+                return false;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 检查是否是输入端口
+        /// </summary>
+        public bool IsInputPort()
+        {
+            return !IsOutputPort();
         }
     }
 }
