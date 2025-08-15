@@ -34,11 +34,20 @@
 - 监听NetworkView的鼠标事件
 - 管理连接创建流程
 - 协调预览和高亮显示
+- 使用NodeInputViewModel和NodeOutputViewModel处理端口类型
 
 ```csharp
 // 在WorkflowDesignerView中使用
 _portConnectionHandler = new PortConnectionHandler(networkView, ViewModel.Network, _connectionManager);
 ```
+
+### 1.1 PortViewModelHelper
+**位置**: `UI/Utilities/PortViewModelHelper.cs`
+
+提供端口类型处理的辅助方法：
+- 统一处理NodeInputViewModel和NodeOutputViewModel
+- 提供类型检查和转换功能
+- 简化端口操作的复杂性
 
 ### 2. ConnectionPreviewControl
 **位置**: `UI/Controls/ConnectionPreviewControl.cs`
@@ -96,6 +105,11 @@ bool removed = _connectionManager.RemovePortConnection(sourceOutput, targetInput
 
 // 查询端口连接状态
 bool isConnected = _connectionManager.IsInputPortConnected(inputPort);
+
+// 使用PortViewModelHelper处理端口类型
+bool isInput = PortViewModelHelper.IsInputPort(port);
+string portName = PortViewModelHelper.GetPortName(port);
+NodeInputViewModel inputPort = PortViewModelHelper.AsInputPort(port);
 ```
 
 ## 连接规则

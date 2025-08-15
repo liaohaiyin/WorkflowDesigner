@@ -7,6 +7,7 @@ using System.Windows.Media;
 using System.Windows.Shapes;
 using NodeNetwork.ViewModels;
 using NodeNetwork.Views;
+using WorkflowDesigner.UI.Utilities;
 
 namespace WorkflowDesigner.UI.Controls
 {
@@ -72,30 +73,49 @@ namespace WorkflowDesigner.UI.Controls
         }
 
         /// <summary>
-        /// 高亮指定端口（通常用于悬停效果）
+        /// 高亮指定输入端口（通常用于悬停效果）
         /// </summary>
-        /// <param name="port">要高亮的端口</param>
+        /// <param name="inputPort">要高亮的输入端口</param>
         /// <param name="isCompatible">是否兼容</param>
-        public void HighlightPort(NodePortViewModel port, bool isCompatible)
+        public void HighlightInputPort(NodeInputViewModel inputPort, bool isCompatible)
         {
             try
             {
                 var color = isCompatible ? Colors.LightGreen : Colors.LightCoral;
-                CreatePortHighlight(port, color);
+                CreatePortHighlight(inputPort, color);
                 Visibility = Visibility.Visible;
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"高亮端口失败: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"高亮输入端口失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 高亮指定输出端口（通常用于悬停效果）
+        /// </summary>
+        /// <param name="outputPort">要高亮的输出端口</param>
+        /// <param name="isCompatible">是否兼容</param>
+        public void HighlightOutputPort(NodeOutputViewModel outputPort, bool isCompatible)
+        {
+            try
+            {
+                var color = isCompatible ? Colors.LightGreen : Colors.LightCoral;
+                CreatePortHighlight(outputPort, color);
+                Visibility = Visibility.Visible;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"高亮输出端口失败: {ex.Message}");
             }
         }
 
         /// <summary>
         /// 创建端口高亮效果
         /// </summary>
-        /// <param name="port">要高亮的端口</param>
+        /// <param name="port">要高亮的端口（NodeInputViewModel或NodeOutputViewModel）</param>
         /// <param name="color">高亮颜色</param>
-        private void CreatePortHighlight(NodePortViewModel port, Color color)
+        private void CreatePortHighlight(object port, Color color)
         {
             try
             {
@@ -154,15 +174,19 @@ namespace WorkflowDesigner.UI.Controls
         /// <summary>
         /// 获取端口在NetworkView中的位置
         /// </summary>
-        /// <param name="port">端口视图模型</param>
+        /// <param name="port">端口视图模型（NodeInputViewModel或NodeOutputViewModel）</param>
         /// <returns>端口位置，如果找不到则返回null</returns>
-        private Point? GetPortPosition(NodePortViewModel port)
+        private Point? GetPortPosition(object port)
         {
             try
             {
-                // 这里需要通过视觉树查找对应的PortView控件
-                // 由于NodeNetwork的内部结构可能比较复杂，这里提供一个基本的实现
-                
+                // 验证端口有效性
+                if (!PortViewModelHelper.IsValidPort(port))
+                {
+                    return null;
+                }
+
+                // 通过视觉树查找对应的PortView控件
                 var portView = FindPortView(_networkView, port);
                 if (portView != null)
                 {
@@ -184,9 +208,9 @@ namespace WorkflowDesigner.UI.Controls
         /// 在视觉树中查找指定端口的PortView
         /// </summary>
         /// <param name="parent">父容器</param>
-        /// <param name="port">目标端口视图模型</param>
+        /// <param name="port">目标端口视图模型（NodeInputViewModel或NodeOutputViewModel）</param>
         /// <returns>对应的PortView，如果找不到则返回null</returns>
-        private PortView FindPortView(DependencyObject parent, NodePortViewModel port)
+        private PortView FindPortView(DependencyObject parent, object port)
         {
             try
             {
@@ -236,24 +260,46 @@ namespace WorkflowDesigner.UI.Controls
         }
 
         /// <summary>
-        /// 高亮悬停的端口
+        /// 高亮悬停的输入端口
         /// </summary>
-        /// <param name="port">悬停的端口</param>
+        /// <param name="inputPort">悬停的输入端口</param>
         /// <param name="isCompatible">是否与当前连接兼容</param>
-        public void HighlightHoveredPort(NodePortViewModel port, bool isCompatible)
+        public void HighlightHoveredInputPort(NodeInputViewModel inputPort, bool isCompatible)
         {
             try
             {
                 ClearHighlights();
                 
                 var color = isCompatible ? Colors.Gold : Colors.Red;
-                CreatePortHighlight(port, color);
+                CreatePortHighlight(inputPort, color);
                 
                 Visibility = Visibility.Visible;
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"高亮悬停端口失败: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"高亮悬停输入端口失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 高亮悬停的输出端口
+        /// </summary>
+        /// <param name="outputPort">悬停的输出端口</param>
+        /// <param name="isCompatible">是否与当前连接兼容</param>
+        public void HighlightHoveredOutputPort(NodeOutputViewModel outputPort, bool isCompatible)
+        {
+            try
+            {
+                ClearHighlights();
+                
+                var color = isCompatible ? Colors.Gold : Colors.Red;
+                CreatePortHighlight(outputPort, color);
+                
+                Visibility = Visibility.Visible;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"高亮悬停输出端口失败: {ex.Message}");
             }
         }
     }

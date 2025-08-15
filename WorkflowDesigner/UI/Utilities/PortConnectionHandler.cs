@@ -385,13 +385,21 @@ namespace WorkflowDesigner.UI.Utilities
         /// <summary>
         /// 获取端口在NetworkView中的位置
         /// </summary>
-        public Point GetPortPosition(NodePortViewModel port)
+        /// <param name="port">端口视图模型（NodeInputViewModel或NodeOutputViewModel）</param>
+        /// <returns>端口位置</returns>
+        public Point GetPortPosition(object port)
         {
             try
             {
+                if (!PortViewModelHelper.IsValidPort(port))
+                {
+                    return new Point(0, 0);
+                }
+
                 // 这里需要找到PortView并获取其在NetworkView中的位置
                 // 具体实现可能需要遍历视觉树来找到对应的PortView
-                return new Point(0, 0); // 临时返回
+                // 由于复杂性，暂时返回默认位置
+                return new Point(0, 0);
             }
             catch (Exception ex)
             {
