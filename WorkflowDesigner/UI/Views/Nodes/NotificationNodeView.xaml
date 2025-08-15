@@ -32,18 +32,32 @@
 
         <!-- 输入端口区域 -->
         <Grid Grid.Row="0" HorizontalAlignment="Left" Margin="5,5,0,0">
-            <nodenetwork:NodeInputView ViewModel="{Binding Inputs[0]}"
-                                       Width="16" Height="16"
-                                       Cursor="Hand"
-                                       ToolTip="输入端口 - 接收连接"/>
+            <ItemsControl ItemsSource="{Binding Inputs.Items}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <nodenetwork:NodeInputView
+                            ViewModel="{Binding}"
+                            Width="16" Height="16"
+                            Cursor="Hand"
+                            ToolTip="输入端口 - 接收连接"/>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
         </Grid>
 
         <!-- 输出端口区域 -->
         <Grid Grid.Row="2" HorizontalAlignment="Right" Margin="0,0,5,5">
-            <nodenetwork:NodeOutputView ViewModel="{Binding Outputs[0]}"
-                                        Width="16" Height="16"
-                                        Cursor="Hand"
-                                        ToolTip="输出端口 - 拖拽创建连接"/>
+            <ItemsControl ItemsSource="{Binding Outputs.Items}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <nodenetwork:NodeOutputView
+                            ViewModel="{Binding}"
+                            Width="16" Height="16"
+                            Cursor="Hand"
+                            ToolTip="输出端口 - 拖拽创建连接"/>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
         </Grid>
     </Border>
 </local:DraggableNodeViewBase>

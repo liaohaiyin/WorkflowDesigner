@@ -34,10 +34,17 @@
 
             <!-- 输入端口区域 -->
             <Grid Grid.Row="0" HorizontalAlignment="Left" Margin="5,5,0,0">
-                <nodenetwork:NodeInputView ViewModel="{Binding Inputs[0]}"
-                                           Width="16" Height="16"
-                                           Cursor="Hand"
-                                           ToolTip="输入端口 - 接收连接"/>
+                <ItemsControl ItemsSource="{Binding Inputs.Items}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <nodenetwork:NodeInputView
+                                ViewModel="{Binding}"
+                                Width="16" Height="16"
+                                Cursor="Hand"
+                                ToolTip="输入端口 - 接收连接"/>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
             </Grid>
         </Grid>
     </Border>

@@ -39,13 +39,24 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 
-                <!-- 输出端口 -->
-                <nodenetwork:NodeOutputView Grid.Column="1" 
-                                           ViewModel="{Binding Outputs[0]}"
-                                           Margin="0,0,5,0"
-                                           Width="16" Height="16"
-                                           Cursor="Hand"
-                                           ToolTip="输出端口 - 拖拽创建连接"/>
+                <!-- 输出端口（绑定到 Outputs.Items） -->
+                <ItemsControl Grid.Column="1" ItemsSource="{Binding Outputs.Items}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <nodenetwork:NodeOutputView
+                                ViewModel="{Binding}"
+                                Margin="0,0,5,0"
+                                Width="16" Height="16"
+                                Cursor="Hand"
+                                ToolTip="输出端口 - 拖拽创建连接"/>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
             </Grid>
         </Grid>
     </Border>
