@@ -1,4 +1,4 @@
-﻿<local:DraggableNodeViewBase x:TypeArguments="vm:TaskNodeViewModel"
+<local:DraggableNodeViewBase x:TypeArguments="vm:TaskNodeViewModel"
                     x:Class="WorkflowDesigner.UI.Views.Nodes.TaskNodeView"
                     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -6,6 +6,7 @@
                     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
                     xmlns:local="clr-namespace:WorkflowDesigner.UI.Views.Nodes"
                     xmlns:vm="clr-namespace:WorkflowDesigner.Nodes"
+                    xmlns:nodenetwork="clr-namespace:NodeNetwork.Views;assembly=NodeNetwork"
                     mc:Ignorable="d"
                     Width="140" Height="80">
     <Border Background="#F3E5F5" BorderBrush="#9C27B0" BorderThickness="2" CornerRadius="4">
@@ -27,6 +28,22 @@
                        Margin="3" Foreground="#4A148C"/>
 
             <Rectangle Grid.Row="2" Height="3" Fill="{Binding StatusBrush}" Margin="3"/>
+        </Grid>
+
+        <!-- 输入端口区域 -->
+        <Grid Grid.Row="0" HorizontalAlignment="Left" Margin="5,5,0,0">
+            <nodenetwork:NodeInputView ViewModel="{Binding Inputs[0]}"
+                                       Width="16" Height="16"
+                                       Cursor="Hand"
+                                       ToolTip="输入端口 - 接收连接"/>
+        </Grid>
+
+        <!-- 输出端口区域 -->
+        <Grid Grid.Row="2" HorizontalAlignment="Right" Margin="0,0,5,5">
+            <nodenetwork:NodeOutputView ViewModel="{Binding Outputs[0]}"
+                                        Width="16" Height="16"
+                                        Cursor="Hand"
+                                        ToolTip="输出端口 - 拖拽创建连接"/>
         </Grid>
     </Border>
 </local:DraggableNodeViewBase>
