@@ -18,12 +18,22 @@ namespace WorkflowDesigner.UI.Controls
     {
         private readonly List<Ellipse> _highlightElements = new List<Ellipse>();
         private readonly NetworkView _networkView;
+        private readonly Panel _overlayContainer;
 
-        public PortHighlightOverlay(NetworkView networkView)
+        public PortHighlightOverlay(Panel overlayContainer, NetworkView networkView)
         {
+            _overlayContainer = overlayContainer ?? throw new ArgumentNullException(nameof(overlayContainer));
             _networkView = networkView ?? throw new ArgumentNullException(nameof(networkView));
             IsHitTestVisible = false; // 不拦截鼠标事件
             Visibility = Visibility.Collapsed;
+
+            Width = _overlayContainer.ActualWidth;
+            Height = _overlayContainer.ActualHeight;
+            _overlayContainer.SizeChanged += (s, e) =>
+            {
+                Width = e.NewSize.Width;
+                Height = e.NewSize.Height;
+            };
         }
 
         /// <summary>
@@ -138,7 +148,7 @@ namespace WorkflowDesigner.UI.Controls
                         }
                     };
 
-                    // 设置位置
+                    // 设置位置（已为叠加容器坐标）
                     Canvas.SetLeft(highlight, portPosition.Value.X - highlight.Width / 2);
                     Canvas.SetTop(highlight, portPosition.Value.Y - highlight.Height / 2);
 
@@ -172,7 +182,7 @@ namespace WorkflowDesigner.UI.Controls
         }
 
         /// <summary>
-        /// 获取端口在NetworkView中的位置
+        /// 获取端口在叠加容器中的位置
         /// </summary>
         /// <param name="port">端口视图模型（NodeInputViewModel或NodeOutputViewModel）</param>
         /// <returns>端口位置，如果找不到则返回null</returns>
@@ -190,7 +200,8 @@ namespace WorkflowDesigner.UI.Controls
                 var portView = FindPortView(_networkView, port);
                 if (portView != null)
                 {
-                    var transform = portView.TransformToAncestor(_networkView);
+                    // 坐标从 NetworkView 转换到 叠加容器
+                    var transform = portView.TransformToAncestor(_overlayContainer);
                     var portCenter = transform.Transform(new Point(portView.ActualWidth / 2, portView.ActualHeight / 2));
                     return portCenter;
                 }
