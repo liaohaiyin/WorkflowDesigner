@@ -1,4 +1,4 @@
-﻿<local:DraggableNodeViewBase x:TypeArguments="vm:DecisionNodeViewModel"
+<local:DraggableNodeViewBase x:TypeArguments="vm:DecisionNodeViewModel"
                     x:Class="WorkflowDesigner.UI.Views.Nodes.DecisionNodeView"
                     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -6,6 +6,7 @@
                     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
                     xmlns:local="clr-namespace:WorkflowDesigner.UI.Views.Nodes"
                     xmlns:vm="clr-namespace:WorkflowDesigner.Nodes"
+                    xmlns:nodenetwork="clr-namespace:NodeNetwork.Views;assembly=NodeNetwork"
                     mc:Ignorable="d"
                     Width="140" Height="80">
     <Border Background="#FFF3E0" BorderBrush="#FF9800" BorderThickness="2" CornerRadius="4">
@@ -17,16 +18,41 @@
             </Grid.RowDefinitions>
 
             <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Center" Margin="5,3">
-                <TextBlock Text="◆" FontSize="14" Foreground="#FF9800" Margin="0,0,3,0"/>
-                <TextBlock Text="判断" FontWeight="Bold" FontSize="12" Foreground="#F57C00"/>
+                <TextBlock Text="?" FontSize="14" FontWeight="Bold" Foreground="#FF9800" Margin="0,0,3,0"/>
+                <TextBlock Text="判断" FontWeight="Bold" FontSize="12" Foreground="#E65100"/>
             </StackPanel>
 
             <TextBlock Grid.Row="1" Text="{Binding NodeName}" 
                        FontSize="10" HorizontalAlignment="Center" 
                        VerticalAlignment="Center" TextWrapping="Wrap"
-                       Margin="3" Foreground="#E65100"/>
+                       Margin="3" Foreground="#BF360C"/>
 
             <Rectangle Grid.Row="2" Height="3" Fill="{Binding StatusBrush}" Margin="3"/>
+        </Grid>
+
+        <!-- 输入端口区域 -->
+        <Grid Grid.Row="0" HorizontalAlignment="Left" Margin="5,5,0,0">
+            <nodenetwork:NodeInputView ViewModel="{Binding Inputs[0]}"
+                                       Width="16" Height="16"
+                                       Cursor="Hand"
+                                       ToolTip="输入端口 - 接收连接"/>
+        </Grid>
+
+        <!-- 输出端口区域 - 判断节点通常有两个输出（True/False） -->
+        <Grid Grid.Row="2" HorizontalAlignment="Right" Margin="0,0,5,5">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <!-- True输出端口 -->
+                <nodenetwork:NodeOutputView ViewModel="{Binding Outputs[0]}"
+                                            Width="16" Height="16"
+                                            Margin="0,0,5,0"
+                                            Cursor="Hand"
+                                            ToolTip="True输出端口 - 拖拽创建连接"/>
+                <!-- False输出端口 -->
+                <nodenetwork:NodeOutputView ViewModel="{Binding Outputs[1]}"
+                                            Width="16" Height="16"
+                                            Cursor="Hand"
+                                            ToolTip="False输出端口 - 拖拽创建连接"/>
+            </StackPanel>
         </Grid>
     </Border>
 </local:DraggableNodeViewBase>

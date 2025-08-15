@@ -1,4 +1,4 @@
-﻿<local:DraggableNodeViewBase x:TypeArguments="vm:EndNodeViewModel"
+<local:DraggableNodeViewBase x:TypeArguments="vm:EndNodeViewModel"
                     x:Class="WorkflowDesigner.UI.Views.Nodes.EndNodeView"
                     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -6,24 +6,39 @@
                     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
                     xmlns:local="clr-namespace:WorkflowDesigner.UI.Views.Nodes"
                     xmlns:vm="clr-namespace:WorkflowDesigner.Nodes"
+                    xmlns:nodenetwork="clr-namespace:NodeNetwork.Views;assembly=NodeNetwork"
                     mc:Ignorable="d"
                     Width="140" Height="80">
+
     <Border Background="#FFEBEE" BorderBrush="#F44336" BorderThickness="2" CornerRadius="4">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
-            <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Center" Margin="5,3">
-                <TextBlock Text="⏹" FontSize="14" Foreground="#F44336" Margin="0,0,3,0"/>
-                <TextBlock Text="结束" FontWeight="Bold" FontSize="12" Foreground="#C62828"/>
+            <!-- 标题栏 -->
+            <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Center" Margin="5,5">
+                <TextBlock Text="■" FontSize="16" Foreground="#F44336" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                <TextBlock Text="结束" FontWeight="Bold" FontSize="14" Foreground="#C62828" VerticalAlignment="Center"/>
             </StackPanel>
 
-            <TextBlock Grid.Row="1" Text="{Binding NodeName}" 
-                       FontSize="10" HorizontalAlignment="Center" 
-                       VerticalAlignment="Center" TextWrapping="Wrap"
-                       Margin="3" Foreground="#B71C1C"/>
+            <!-- 内容区域 -->
+            <Grid Grid.Row="1" Margin="8,2,8,8">
+                <TextBlock Text="{Binding NodeName}" 
+                         FontSize="12" HorizontalAlignment="Center" 
+                         VerticalAlignment="Center" TextWrapping="Wrap"
+                         Foreground="#B71C1C" TextAlignment="Center"/>
+            </Grid>
+
+            <!-- 输入端口区域 -->
+            <Grid Grid.Row="0" HorizontalAlignment="Left" Margin="5,5,0,0">
+                <nodenetwork:NodeInputView ViewModel="{Binding Inputs[0]}"
+                                           Width="16" Height="16"
+                                           Cursor="Hand"
+                                           ToolTip="输入端口 - 接收连接"/>
+            </Grid>
         </Grid>
     </Border>
 </local:DraggableNodeViewBase>
