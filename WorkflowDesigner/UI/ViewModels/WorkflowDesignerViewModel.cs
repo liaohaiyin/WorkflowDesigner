@@ -1,4 +1,4 @@
-﻿using DynamicData;
+using DynamicData;
 using Newtonsoft.Json;
 using NLog;
 using NodeNetwork.ViewModels;
@@ -34,6 +34,7 @@ namespace WorkflowDesigner.UI.ViewModels
         private Stack<string> _redoStack = new Stack<string>();
         private bool _isDragging;
         private Point _dragStartPosition;
+        private NodeFactory _nodeFactory;
 
         public WorkflowDesignerViewModel()
         {
@@ -42,6 +43,9 @@ namespace WorkflowDesigner.UI.ViewModels
                 CreateNetworkViewModel();
                 SetupChangeListeners();
                 SetupNodeSelection();
+                
+                // 初始化节点工厂
+                _nodeFactory = new NodeFactory();
 
                 Logger.Info("WorkflowDesignerViewModel 初始化成功");
             }
@@ -94,6 +98,15 @@ namespace WorkflowDesigner.UI.ViewModels
         {
             get => _hasChanges;
             set => this.RaiseAndSetIfChanged(ref _hasChanges, value);
+        }
+
+        /// <summary>
+        /// 节点工厂，用于创建各种类型的工作流节点
+        /// </summary>
+        public NodeFactory NodeFactory
+        {
+            get => _nodeFactory;
+            set => this.RaiseAndSetIfChanged(ref _nodeFactory, value);
         }
 
         public bool CanUndo
