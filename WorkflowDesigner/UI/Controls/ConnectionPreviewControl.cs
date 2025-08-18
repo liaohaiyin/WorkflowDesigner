@@ -28,7 +28,7 @@ namespace WorkflowDesigner.UI.Controls
             {
                 Stroke = new SolidColorBrush(Color.FromRgb(33, 150, 243)), // 蓝色
                 StrokeThickness = 2,
-                StrokeDashArray = new DoubleCollection { 5, 3 }, // 虚线
+                StrokeDashArray = new DoubleCollection { 2, 1 }, // 虚线
                 Opacity = 0.8
             };
             

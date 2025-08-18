@@ -52,7 +52,7 @@
             </Grid>
 
             <!-- 输出端口区域 - 修复位置 -->
-            <Grid Grid.Row="0" Grid.RowSpan="3" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,-8,0" Background="Red">
+            <Grid Grid.Row="0" Grid.RowSpan="3" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,-8,0" Background="Transparent" IsHitTestVisible="False">
                 <ItemsControl ItemsSource="{Binding Outputs.Items}">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
@@ -62,12 +62,13 @@
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
                             <nodenetwork:NodeOutputView
-                            ViewModel="{Binding}"
-                            Margin="0,2"
-                            Width="16" Height="16"
-                            Cursor="Hand"
-                            ToolTip="输出端口 - 拖拽创建连接"
-                            DataContext="{Binding}"/>
+                                        ViewModel="{Binding}"
+                                        Margin="0,2"
+                                        Width="16" Height="16"
+                                        Cursor="Hand"
+                                        ToolTip="输出端口 - 拖拽创建连接"
+                                        DataContext="{Binding}"
+                                        IsHitTestVisible="True"/>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
