@@ -13,7 +13,7 @@ using WorkflowDesigner.UI.Controls;
 namespace WorkflowDesigner.UI.Utilities
 {
     /// <summary>
-    /// 端口连接处理器 - 处理NetworkView中PortView的连接点功能
+    /// 端口连接处理器
     /// </summary>
     public class PortConnectionHandler
     {
