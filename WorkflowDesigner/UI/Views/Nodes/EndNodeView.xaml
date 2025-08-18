@@ -32,16 +32,23 @@
                          Foreground="#B71C1C" TextAlignment="Center"/>
             </Grid>
 
-            <!-- 输入端口区域 -->
-            <Grid Grid.Row="0" HorizontalAlignment="Left" Margin="-35,5,0,0" Background="Red">
+            <!-- 输入端口区域 - 修复位置 -->
+            <Grid Grid.Row="0" Grid.RowSpan="3" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="-8,0,0,0">
                 <ItemsControl ItemsSource="{Binding Inputs.Items}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Vertical"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
                             <nodenetwork:NodeInputView
-                                ViewModel="{Binding}"
-                                Width="16" Height="16"
-                                Cursor="Hand"
-                                ToolTip="输入端口 - 接收连接"/>
+                                        ViewModel="{Binding}"
+                                        Margin="0,2"
+                                        Width="16" Height="16"
+                                        Cursor="Hand"
+                                        ToolTip="输入端口 - 接收连接"
+                                        DataContext="{Binding}" Background="Red"/>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>

@@ -38,7 +38,8 @@
                             ViewModel="{Binding}"
                             Width="16" Height="16"
                             Cursor="Hand"
-                            ToolTip="输入端口 - 接收连接"/>
+                            ToolTip="输入端口 - 接收连接"
+                                DataContext="{Binding}"/>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
@@ -58,7 +59,8 @@
                             ViewModel="{Binding}"
                             Width="16" Height="16"
                             Cursor="Hand"
-                            ToolTip="输出端口 - 拖拽创建连接"/>
+                            ToolTip="输出端口 - 拖拽创建连接"
+                                DataContext="{Binding}"/>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>

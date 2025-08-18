@@ -45,16 +45,21 @@ namespace WorkflowDesigner.UI.Utilities
         {
             try
             {
-                // 预先确定叠加容器
-                _overlayContainer = FindOverlayContainer();
-
-                // 订阅NetworkView的鼠标事件（包含已处理事件）
-                _networkView.AddHandler(UIElement.MouseLeftButtonDownEvent, new MouseButtonEventHandler(OnNetworkViewMouseLeftButtonDown), true);
-                _networkView.AddHandler(UIElement.MouseMoveEvent, new MouseEventHandler(OnNetworkViewMouseMove), true);
-                _networkView.AddHandler(UIElement.MouseLeftButtonUpEvent, new MouseButtonEventHandler(OnNetworkViewMouseLeftButtonUp), true);
+                // 设置叠加容器
+                SetupOverlayContainer();
 
                 // 创建端口高亮覆盖层
                 CreatePortHighlightOverlay();
+
+                // 订阅网络视图事件 - 使用预览事件确保能够捕获
+                _networkView.PreviewMouseLeftButtonDown += OnNetworkViewPreviewMouseLeftButtonDown;
+                _networkView.PreviewMouseMove += OnNetworkViewPreviewMouseMove;
+                _networkView.PreviewMouseLeftButtonUp += OnNetworkViewPreviewMouseLeftButtonUp;
+
+                // 也订阅普通事件作为备份
+                _networkView.MouseLeftButtonDown += OnNetworkViewMouseLeftButtonDown;
+                _networkView.MouseMove += OnNetworkViewMouseMove;
+                _networkView.MouseLeftButtonUp += OnNetworkViewMouseLeftButtonUp;
 
                 Logger.Info("PortConnectionHandler 初始化成功");
             }
@@ -65,34 +70,69 @@ namespace WorkflowDesigner.UI.Utilities
             }
         }
 
-        /// <summary>
-        /// 鼠标左键按下事件处理
-        /// </summary>
-        private void OnNetworkViewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        private void SetupOverlayContainer()
         {
             try
             {
-                var hitTarget = GetHitTarget(e.GetPosition(_networkView));
+                // 查找合适的叠加容器
+                _overlayContainer = FindOverlayContainer();
 
-                // 从命中目标向上查找输出端口
-                var outputPort = TryGetOutputPortFromVisual(hitTarget);
-                if (outputPort != null)
+                if (_overlayContainer == null)
                 {
-                    StartConnection(outputPort, e.GetPosition(_networkView));
-                    e.Handled = true;
-                    return;
+                    // 创建一个Grid作为叠加容器
+                    var parent = _networkView.Parent as System.Windows.Controls.Panel;
+                    if (parent != null)
+                    {
+                        _overlayContainer = parent;
+                    }
+                    else
+                    {
+                        // 最后的备选方案：创建一个包装容器
+                        var grid = new System.Windows.Controls.Grid();
+                        var originalParent = _networkView.Parent as System.Windows.Controls.Panel;
+                        if (originalParent != null)
+                        {
+                            originalParent.Children.Remove(_networkView);
+                            originalParent.Children.Add(grid);
+                            grid.Children.Add(_networkView);
+                            _overlayContainer = grid;
+                        }
+                    }
                 }
             }
             catch (Exception ex)
             {
-                Logger.Error(ex, "处理鼠标左键按下事件失败");
+                Logger.Error(ex, "设置叠加容器失败");
             }
         }
 
-        /// <summary>
-        /// 鼠标移动事件处理
-        /// </summary>
-        private void OnNetworkViewMouseMove(object sender, MouseEventArgs e)
+        #region 鼠标事件处理 - 预览事件
+
+        private void OnNetworkViewPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            try
+            {
+                var hitElement = e.OriginalSource as DependencyObject;
+
+                // 尝试获取输出端口
+                var outputPort = GetOutputPortFromHit(hitElement);
+                if (outputPort != null)
+                {
+                    Logger.Debug($"检测到输出端口点击: {outputPort.Name}");
+                    StartConnection(outputPort, e.GetPosition(_networkView));
+                    e.Handled = true;
+                    return;
+                }
+
+                Logger.Debug($"预览事件未检测到端口，命中元素: {hitElement?.GetType().Name}");
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex, "处理预览鼠标左键按下事件失败");
+            }
+        }
+
+        private void OnNetworkViewPreviewMouseMove(object sender, MouseEventArgs e)
         {
             try
             {
@@ -100,47 +140,194 @@ namespace WorkflowDesigner.UI.Utilities
                 {
                     _currentMousePosition = e.GetPosition(_networkView);
                     UpdateConnectionPreview();
+
+                    // 检查悬停的输入端口
+                    var hitElement = e.OriginalSource as DependencyObject;
+                    var inputPort = GetInputPortFromHit(hitElement);
+                    UpdatePortHighlight(inputPort);
                 }
             }
             catch (Exception ex)
             {
-                Logger.Error(ex, "处理鼠标移动事件失败");
+                Logger.Error(ex, "处理预览鼠标移动事件失败");
             }
         }
 
-        /// <summary>
-        /// 鼠标左键释放事件处理
-        /// </summary>
-        private void OnNetworkViewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        private void OnNetworkViewPreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
             try
             {
                 if (_isConnecting)
                 {
-                    var hitTarget = GetHitTarget(e.GetPosition(_networkView));
+                    var hitElement = e.OriginalSource as DependencyObject;
+                    var inputPort = GetInputPortFromHit(hitElement);
 
-                    // 从命中目标向上查找输入端口
-                    var inputPort = TryGetInputPortFromVisual(hitTarget);
                     if (inputPort != null)
                     {
+                        Logger.Debug($"尝试连接到输入端口: {inputPort.Name}");
                         CompleteConnection(inputPort);
                     }
                     else
                     {
+                        Logger.Debug("未检测到有效的输入端口，取消连接");
                         CancelConnection();
                     }
+
+                    e.Handled = true;
                 }
             }
             catch (Exception ex)
             {
-                Logger.Error(ex, "处理鼠标左键释放事件失败");
+                Logger.Error(ex, "处理预览鼠标左键释放事件失败");
                 CancelConnection();
             }
         }
 
-        /// <summary>
-        /// 开始连接操作
-        /// </summary>
+        #endregion
+
+        #region 鼠标事件处理 - 普通事件（备份）
+
+        private void OnNetworkViewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            // 如果预览事件没有处理，这里作为备份
+            if (!e.Handled)
+            {
+                OnNetworkViewPreviewMouseLeftButtonDown(sender, e);
+            }
+        }
+
+        private void OnNetworkViewMouseMove(object sender, MouseEventArgs e)
+        {
+            if (!_isConnecting) return;
+            OnNetworkViewPreviewMouseMove(sender, e);
+        }
+
+        private void OnNetworkViewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            if (!e.Handled && _isConnecting)
+            {
+                OnNetworkViewPreviewMouseLeftButtonUp(sender, e);
+            }
+        }
+
+        #endregion
+
+        #region 端口查找逻辑 - 核心修复
+
+        private NodeOutputViewModel GetOutputPortFromHit(DependencyObject hitElement)
+        {
+            if (hitElement == null) return null;
+
+            try
+            {
+                // 方法1: 直接检查是否是NodeOutputView
+                if (hitElement is NodeOutputView outputView)
+                {
+                    Logger.Debug("直接命中NodeOutputView");
+                    return outputView.ViewModel as NodeOutputViewModel;
+                }
+
+                // 方法2: 向上遍历可视化树查找NodeOutputView
+                var current = hitElement;
+                while (current != null)
+                {
+                    if (current is NodeOutputView nodeOutputView)
+                    {
+                        Logger.Debug($"在可视化树中找到NodeOutputView，深度: {GetDepth(hitElement, current)}");
+                        return nodeOutputView.ViewModel as NodeOutputViewModel;
+                    }
+                    current = VisualTreeHelper.GetParent(current);
+                }
+
+                // 方法3: 检查DataContext
+                if (hitElement is FrameworkElement element && element.DataContext is NodeOutputViewModel outputViewModel)
+                {
+                    Logger.Debug("通过DataContext找到NodeOutputViewModel");
+                    return outputViewModel;
+                }
+
+                // 方法4: 通过Tag属性查找
+                if (hitElement is FrameworkElement tagElement && tagElement.Tag is NodeOutputViewModel tagOutputViewModel)
+                {
+                    Logger.Debug("通过Tag找到NodeOutputViewModel");
+                    return tagOutputViewModel;
+                }
+
+                Logger.Debug($"未能从命中元素找到输出端口: {hitElement.GetType().Name}");
+                return null;
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex, "从命中元素获取输出端口失败");
+                return null;
+            }
+        }
+
+        private NodeInputViewModel GetInputPortFromHit(DependencyObject hitElement)
+        {
+            if (hitElement == null) return null;
+
+            try
+            {
+                // 方法1: 直接检查是否是NodeInputView
+                if (hitElement is NodeInputView inputView)
+                {
+                    Logger.Debug("直接命中NodeInputView");
+                    return inputView.ViewModel as NodeInputViewModel;
+                }
+
+                // 方法2: 向上遍历可视化树查找NodeInputView
+                var current = hitElement;
+                while (current != null)
+                {
+                    if (current is NodeInputView nodeInputView)
+                    {
+                        Logger.Debug($"在可视化树中找到NodeInputView，深度: {GetDepth(hitElement, current)}");
+                        return nodeInputView.ViewModel as NodeInputViewModel;
+                    }
+                    current = VisualTreeHelper.GetParent(current);
+                }
+
+                // 方法3: 检查DataContext
+                if (hitElement is FrameworkElement element && element.DataContext is NodeInputViewModel inputViewModel)
+                {
+                    Logger.Debug("通过DataContext找到NodeInputViewModel");
+                    return inputViewModel;
+                }
+
+                // 方法4: 通过Tag属性查找
+                if (hitElement is FrameworkElement tagElement && tagElement.Tag is NodeInputViewModel tagInputViewModel)
+                {
+                    Logger.Debug("通过Tag找到NodeInputViewModel");
+                    return tagInputViewModel;
+                }
+
+                Logger.Debug($"未能从命中元素找到输入端口: {hitElement.GetType().Name}");
+                return null;
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex, "从命中元素获取输入端口失败");
+                return null;
+            }
+        }
+
+        private int GetDepth(DependencyObject child, DependencyObject parent)
+        {
+            int depth = 0;
+            var current = child;
+            while (current != null && current != parent)
+            {
+                current = VisualTreeHelper.GetParent(current);
+                depth++;
+            }
+            return depth;
+        }
+
+        #endregion
+
+        #region 连接操作
+
         private void StartConnection(NodeOutputViewModel sourceOutput, Point startPosition)
         {
             try
@@ -150,7 +337,7 @@ namespace WorkflowDesigner.UI.Utilities
                 _startPosition = startPosition;
                 _currentMousePosition = startPosition;
 
-                // 捕获鼠标以确保能够接收到MouseUp事件
+                // 捕获鼠标
                 _networkView.CaptureMouse();
 
                 // 创建连接预览
@@ -159,7 +346,7 @@ namespace WorkflowDesigner.UI.Utilities
                 // 高亮兼容的输入端口
                 ShowCompatiblePortHighlights();
 
-                Logger.Debug($"开始从端口 '{sourceOutput.Name}' 创建连接");
+                Logger.Info($"开始连接操作: {sourceOutput.Parent?.Name}({sourceOutput.Name})");
             }
             catch (Exception ex)
             {
@@ -168,9 +355,6 @@ namespace WorkflowDesigner.UI.Utilities
             }
         }
 
-        /// <summary>
-        /// 完成连接操作
-        /// </summary>
         private void CompleteConnection(NodeInputViewModel targetInput)
         {
             try
@@ -179,13 +363,18 @@ namespace WorkflowDesigner.UI.Utilities
                     targetInput?.Parent is WorkflowNodeViewModel targetNode)
                 {
                     // 验证连接有效性
-                    if (_connectionManager.IsValidConnection(sourceNode, targetNode, out string errorMessage))
+                    if (_connectionManager.IsValidPortConnection(_sourceOutput, targetInput, out string errorMessage))
                     {
                         // 创建连接
-                        var connection = new ConnectionViewModel(_network, targetInput, _sourceOutput);
-                        _network.Connections.Add(connection);
-
-                        Logger.Info($"成功创建连接: {sourceNode.NodeName}({_sourceOutput.Name}) -> {targetNode.NodeName}({targetInput.Name})");
+                        if (_connectionManager.CreatePortConnection(_sourceOutput, targetInput))
+                        {
+                            Logger.Info($"成功创建连接: {sourceNode.NodeName}({_sourceOutput.Name}) -> {targetNode.NodeName}({targetInput.Name})");
+                        }
+                        else
+                        {
+                            Logger.Warn("连接创建失败");
+                            ShowConnectionError("连接创建失败");
+                        }
                     }
                     else
                     {
@@ -193,19 +382,23 @@ namespace WorkflowDesigner.UI.Utilities
                         ShowConnectionError(errorMessage);
                     }
                 }
-
-                CancelConnection();
+                else
+                {
+                    Logger.Warn("端口所属节点无效");
+                    ShowConnectionError("端口所属节点无效");
+                }
             }
             catch (Exception ex)
             {
                 Logger.Error(ex, "完成连接操作失败");
+                ShowConnectionError($"连接失败: {ex.Message}");
+            }
+            finally
+            {
                 CancelConnection();
             }
         }
 
-        /// <summary>
-        /// 取消连接操作
-        /// </summary>
         private void CancelConnection()
         {
             try
@@ -230,37 +423,38 @@ namespace WorkflowDesigner.UI.Utilities
             }
         }
 
-        /// <summary>
-        /// 创建连接预览线
-        /// </summary>
+        #endregion
+
+        #region 连接预览
+
         private void CreateConnectionPreview()
         {
             try
             {
-                if (_connectionPreview == null)
+                if (_connectionPreview == null && _overlayContainer != null)
                 {
                     _connectionPreview = new ConnectionPreviewControl();
 
-                    // NetworkView不是Panel类型，需要添加到其父容器中
-                    // 直接尝试添加到父容器
-                    AddPreviewToParentContainer();
-                }
-
-                // 同步预览控件大小覆盖父容器
-                if (_overlayContainer != null)
-                {
+                    // 设置预览控件尺寸
                     _connectionPreview.Width = _overlayContainer.ActualWidth;
                     _connectionPreview.Height = _overlayContainer.ActualHeight;
-                    _overlayContainer.SizeChanged -= OverlayContainer_SizeChanged;
-                    _overlayContainer.SizeChanged += OverlayContainer_SizeChanged;
+
+                    // 添加到叠加容器
+                    _overlayContainer.Children.Add(_connectionPreview);
+
+                    // 监听容器尺寸变化
+                    _overlayContainer.SizeChanged += OnOverlayContainerSizeChanged;
                 }
 
-                // 显示预览（坐标转换到叠加容器坐标系）
-                var start = MapFromNetworkToOverlay(_startPosition);
-                var current = MapFromNetworkToOverlay(_currentMousePosition);
-                _connectionPreview.ShowPreview(start, current);
+                if (_connectionPreview != null)
+                {
+                    // 坐标转换并显示预览
+                    var start = MapFromNetworkToOverlay(_startPosition);
+                    var current = MapFromNetworkToOverlay(_currentMousePosition);
+                    _connectionPreview.ShowPreview(start, current);
+                }
 
-                Logger.Debug("创建连接预览");
+                Logger.Debug("连接预览创建成功");
             }
             catch (Exception ex)
             {
@@ -268,7 +462,55 @@ namespace WorkflowDesigner.UI.Utilities
             }
         }
 
-        private void OverlayContainer_SizeChanged(object sender, SizeChangedEventArgs e)
+        private void UpdateConnectionPreview()
+        {
+            try
+            {
+                if (_connectionPreview != null && _isConnecting)
+                {
+                    // 检查当前位置是否有有效的输入端口
+                    var hitElement = GetElementUnderMouse();
+                    var inputPort = GetInputPortFromHit(hitElement);
+                    bool isValidTarget = inputPort != null && ArePortsCompatible(_sourceOutput, inputPort);
+
+                    // 更新预览线
+                    var start = MapFromNetworkToOverlay(_startPosition);
+                    var current = MapFromNetworkToOverlay(_currentMousePosition);
+
+                    _connectionPreview.UpdateBezierPreview(start, current);
+                    _connectionPreview.SetValidationState(isValidTarget);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex, "更新连接预览失败");
+            }
+        }
+
+        private void RemoveConnectionPreview()
+        {
+            try
+            {
+                if (_connectionPreview != null)
+                {
+                    _connectionPreview.Hide();
+
+                    if (_overlayContainer != null)
+                    {
+                        _overlayContainer.Children.Remove(_connectionPreview);
+                        _overlayContainer.SizeChanged -= OnOverlayContainerSizeChanged;
+                    }
+
+                    _connectionPreview = null;
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex, "移除连接预览失败");
+            }
+        }
+
+        private void OnOverlayContainerSizeChanged(object sender, SizeChangedEventArgs e)
         {
             if (_connectionPreview != null)
             {
@@ -277,173 +519,20 @@ namespace WorkflowDesigner.UI.Utilities
             }
         }
 
-        /// <summary>
-        /// 更新连接预览
-        /// </summary>
-        private void UpdateConnectionPreview()
-        {
-            try
-            {
-                if (_connectionPreview != null && _isConnecting)
-                {
-                    // 检查当前鼠标位置是否在有效的输入端口上
-                    var hitTarget = GetHitTarget(_currentMousePosition);
-                    bool isValidTarget = false;
+        #endregion
 
-                    var inputPort = TryGetInputPortFromVisual(hitTarget);
-                    if (inputPort != null)
-                    {
-                        isValidTarget = ArePortsCompatible(_sourceOutput, inputPort);
-                    }
+        #region 端口高亮
 
-                    // 更新预览线（坐标转换到叠加容器坐标系）
-                    var start = MapFromNetworkToOverlay(_startPosition);
-                    var current = MapFromNetworkToOverlay(_currentMousePosition);
-                    _connectionPreview.UpdateBezierPreview(start, current);
-                    _connectionPreview.SetValidationState(isValidTarget);
-                }
-
-                Logger.Debug($"更新连接预览位置: ({_currentMousePosition.X}, {_currentMousePosition.Y})");
-            }
-            catch (Exception ex)
-            {
-                Logger.Error(ex, "更新连接预览失败");
-            }
-        }
-
-        /// <summary>
-        /// 移除连接预览
-        /// </summary>
-        private void RemoveConnectionPreview()
-        {
-            try
-            {
-                if (_connectionPreview != null)
-                {
-                    // 隐藏预览
-                    _connectionPreview.Hide();
-
-                    // 从父容器中移除预览控件
-                    var parent = _connectionPreview.Parent as System.Windows.Controls.Panel;
-                    if (parent != null)
-                    {
-                        parent.Children.Remove(_connectionPreview);
-                    }
-
-                    _connectionPreview = null;
-                }
-                Logger.Debug("移除连接预览");
-            }
-            catch (Exception ex)
-            {
-                Logger.Error(ex, "移除连接预览失败");
-            }
-        }
-
-        /// <summary>
-        /// 显示连接错误信息
-        /// </summary>
-        private void ShowConnectionError(string errorMessage)
-        {
-            try
-            {
-                Logger.Warn($"连接错误: {errorMessage}");
-            }
-            catch (Exception ex)
-            {
-                Logger.Error(ex, "显示连接错误信息失败");
-            }
-        }
-
-        /// <summary>
-        /// 检查端口是否兼容
-        /// </summary>
-        public bool ArePortsCompatible(NodeOutputViewModel output, NodeInputViewModel input)
-        {
-            try
-            {
-                if (output?.Parent is WorkflowNodeViewModel sourceNode &&
-                    input?.Parent is WorkflowNodeViewModel targetNode)
-                {
-                    return _connectionManager.IsValidConnection(sourceNode, targetNode, out _);
-                }
-                return false;
-            }
-            catch (Exception ex)
-            {
-                Logger.Error(ex, "检查端口兼容性失败");
-                return false;
-            }
-        }
-
-        /// <summary>
-        /// 获取端口在NetworkView中的位置
-        /// </summary>
-        /// <param name="port">端口视图模型（NodeInputViewModel或NodeOutputViewModel）</param>
-        /// <returns>端口位置</returns>
-        public Point GetPortPosition(object port)
-        {
-            try
-            {
-                if (!PortViewModelHelper.IsValidPort(port))
-                {
-                    return new Point(0, 0);
-                }
-
-                return new Point(0, 0);
-            }
-            catch (Exception ex)
-            {
-                Logger.Error(ex, "获取端口位置失败");
-                return new Point(0, 0);
-            }
-        }
-
-        /// <summary>
-        /// 将预览控件添加到父容器中
-        /// </summary>
-        private void AddPreviewToParentContainer()
-        {
-            try
-            {
-                // 尝试找到NetworkView的父容器
-                if (_overlayContainer == null)
-                {
-                    _overlayContainer = FindOverlayContainer();
-                }
-
-                if (_overlayContainer != null)
-                {
-                    _overlayContainer.Children.Add(_connectionPreview);
-                    return;
-                }
-
-                Logger.Warn("无法找到合适的父容器来添加连接预览");
-            }
-            catch (Exception ex)
-            {
-                Logger.Error(ex, "添加预览到父容器失败");
-            }
-        }
-
-        /// <summary>
-        /// 创建端口高亮覆盖层
-        /// </summary>
         private void CreatePortHighlightOverlay()
         {
             try
             {
-                if (_overlayContainer == null)
+                if (_overlayContainer != null)
                 {
-                    _overlayContainer = FindOverlayContainer();
+                    _portHighlightOverlay = new PortHighlightOverlay(_overlayContainer, _networkView);
+                    _overlayContainer.Children.Add(_portHighlightOverlay);
+                    Logger.Debug("端口高亮覆盖层创建成功");
                 }
-
-                _portHighlightOverlay = new PortHighlightOverlay(_overlayContainer, _networkView);
-
-                // NetworkView不是Panel类型，直接添加到父容器
-                AddHighlightOverlayToParentContainer();
-
-                Logger.Debug("端口高亮覆盖层创建成功");
             }
             catch (Exception ex)
             {
@@ -451,36 +540,6 @@ namespace WorkflowDesigner.UI.Utilities
             }
         }
 
-        /// <summary>
-        /// 将高亮覆盖层添加到父容器中
-        /// </summary>
-        private void AddHighlightOverlayToParentContainer()
-        {
-            try
-            {
-                // 尝试找到NetworkView的父容器
-                if (_overlayContainer == null)
-                {
-                    _overlayContainer = FindOverlayContainer();
-                }
-
-                if (_overlayContainer != null)
-                {
-                    _overlayContainer.Children.Add(_portHighlightOverlay);
-                    return;
-                }
-
-                Logger.Warn("无法找到合适的父容器来添加端口高亮覆盖层");
-            }
-            catch (Exception ex)
-            {
-                Logger.Error(ex, "添加高亮覆盖层到父容器失败");
-            }
-        }
-
-        /// <summary>
-        /// 显示兼容端口的高亮效果
-        /// </summary>
         private void ShowCompatiblePortHighlights()
         {
             try
@@ -496,9 +555,22 @@ namespace WorkflowDesigner.UI.Utilities
             }
         }
 
-        /// <summary>
-        /// 清除端口高亮效果
-        /// </summary>
+        private void UpdatePortHighlight(NodeInputViewModel inputPort)
+        {
+            try
+            {
+                if (_portHighlightOverlay != null && inputPort != null)
+                {
+                    bool isCompatible = ArePortsCompatible(_sourceOutput, inputPort);
+                    _portHighlightOverlay.HighlightHoveredInputPort(inputPort, isCompatible);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex, "更新端口高亮失败");
+            }
+        }
+
         private void ClearPortHighlights()
         {
             try
@@ -511,87 +583,17 @@ namespace WorkflowDesigner.UI.Utilities
             }
         }
 
-        /// <summary>
-        /// 检查端口视图是否为输出端口，并获取对应的NodeOutputViewModel
-        /// </summary>
-        private NodeOutputViewModel GetOutputPortFromView(PortView portView)
-        {
-            try
-            {
-                if (portView?.ViewModel == null) return null;
+        #endregion
 
-                // 由于PortView.ViewModel是PortViewModel类型，无法直接转换
-                // 我们需要通过反射或其他方式来获取实际的端口对象
-                var viewModel = portView.ViewModel;
-
-                // 尝试通过反射获取实际的端口对象
-                var portProperty = viewModel.GetType().GetProperty("Port");
-                if (portProperty != null)
-                {
-                    var port = portProperty.GetValue(viewModel);
-                    if (port is NodeOutputViewModel outputPort)
-                    {
-                        return outputPort;
-                    }
-                }
-
-                // 如果反射失败，检查类型名称来判断
-                var typeName = viewModel.GetType().Name;
-                Logger.Debug($"端口类型: {typeName}");
-
-                // 这里需要更深入了解NodeNetwork的结构
-                return null;
-            }
-            catch (Exception ex)
-            {
-                Logger.Error(ex, "获取输出端口失败");
-                return null;
-            }
-        }
-
-        /// <summary>
-        /// 检查端口视图是否为输入端口，并获取对应的NodeInputViewModel
-        /// </summary>
-        private NodeInputViewModel GetInputPortFromView(PortView portView)
-        {
-            try
-            {
-                if (portView?.ViewModel == null) return null;
-
-                // 由于PortView.ViewModel是PortViewModel类型，无法直接转换
-                var viewModel = portView.ViewModel;
-
-                // 尝试通过反射获取实际的端口对象
-                var portProperty = viewModel.GetType().GetProperty("Port");
-                if (portProperty != null)
-                {
-                    var port = portProperty.GetValue(viewModel);
-                    if (port is NodeInputViewModel inputPort)
-                    {
-                        return inputPort;
-                    }
-                }
-
-                // 如果反射失败，检查类型名称来判断
-                var typeName = viewModel.GetType().Name;
-                Logger.Debug($"端口类型: {typeName}");
-
-                return null;
-            }
-            catch (Exception ex)
-            {
-                Logger.Error(ex, "获取输入端口失败");
-                return null;
-            }
-        }
-
-        // ==================== 新增：命中检索与坐标转换辅助 ====================
+        #region 辅助方法
 
         private System.Windows.Controls.Panel FindOverlayContainer()
         {
+            // 查找NetworkView的父容器
             var parent = _networkView.Parent as System.Windows.Controls.Panel;
             if (parent != null) return parent;
 
+            // 向上查找Grid或其他Panel
             var visualParent = VisualTreeHelper.GetParent(_networkView);
             while (visualParent != null)
             {
@@ -601,118 +603,91 @@ namespace WorkflowDesigner.UI.Utilities
                 }
                 visualParent = VisualTreeHelper.GetParent(visualParent);
             }
+
             return null;
         }
 
-        private Point MapFromNetworkToOverlay(Point p)
+        private Point MapFromNetworkToOverlay(Point point)
         {
             try
             {
-                if (_overlayContainer == null) return p;
+                if (_overlayContainer == null) return point;
+
                 var transform = _networkView.TransformToAncestor(_overlayContainer);
-                return transform.Transform(p);
+                return transform.Transform(point);
             }
             catch
             {
-                return p;
+                return point;
             }
         }
 
-        private T FindAncestor<T>(DependencyObject current) where T : DependencyObject
-        {
-            while (current != null)
-            {
-                if (current is T t) return t;
-                current = VisualTreeHelper.GetParent(current);
-            }
-            return null;
-        }
-
-        private NodeOutputViewModel TryGetOutputPortFromVisual(Visual visual)
-        {
-            if (visual == null) return null;
-            var dep = visual as DependencyObject;
-
-            // 先查找 NodeOutputView，直接读取其 ViewModel
-            var nodeOutputView = FindAncestor<NodeOutputView>(dep);
-            if (nodeOutputView?.ViewModel is NodeOutputViewModel ovm)
-            {
-                return ovm;
-            }
-
-            // 其次查找 PortView 并尝试解析
-            var portView = FindAncestor<PortView>(dep);
-            if (portView != null)
-            {
-                return GetOutputPortFromView(portView);
-            }
-
-            return null;
-        }
-
-        private NodeInputViewModel TryGetInputPortFromVisual(Visual visual)
-        {
-            if (visual == null) return null;
-            var dep = visual as DependencyObject;
-
-            // 先查找 NodeInputView，直接读取其 ViewModel
-            var nodeInputView = FindAncestor<NodeInputView>(dep);
-            if (nodeInputView?.ViewModel is NodeInputViewModel ivm)
-            {
-                return ivm;
-            }
-
-            // 其次查找 PortView 并尝试解析
-            var portView = FindAncestor<PortView>(dep);
-            if (portView != null)
-            {
-                return GetInputPortFromView(portView);
-            }
-
-            return null;
-        }
-
-        /// <summary>
-        /// 获取鼠标位置处的命中目标
-        /// </summary>
-        private Visual GetHitTarget(Point position)
+        private DependencyObject GetElementUnderMouse()
         {
             try
             {
-                var hitTest = VisualTreeHelper.HitTest(_networkView, position);
-                return hitTest?.VisualHit as Visual;
+                var hitTest = VisualTreeHelper.HitTest(_networkView, _currentMousePosition);
+                return hitTest?.VisualHit;
             }
-            catch (Exception ex)
+            catch
             {
-                Logger.Error(ex, "获取命中目标失败");
                 return null;
             }
         }
 
-        /// <summary>
-        /// 释放资源
-        /// </summary>
+        private bool ArePortsCompatible(NodeOutputViewModel output, NodeInputViewModel input)
+        {
+            try
+            {
+                return _connectionManager.IsValidPortConnection(output, input, out _);
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex, "检查端口兼容性失败");
+                return false;
+            }
+        }
+
+        private void ShowConnectionError(string errorMessage)
+        {
+            try
+            {
+                Logger.Warn($"连接错误: {errorMessage}");
+                // 这里可以添加用户提示，比如状态栏消息或临时通知
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex, "显示连接错误信息失败");
+            }
+        }
+
+        #endregion
+
+        #region 释放资源
+
         public void Dispose()
         {
             try
             {
-                if (_networkView != null)
-                {
-                    _networkView.RemoveHandler(UIElement.MouseLeftButtonDownEvent, new MouseButtonEventHandler(OnNetworkViewMouseLeftButtonDown));
-                    _networkView.RemoveHandler(UIElement.MouseMoveEvent, new MouseEventHandler(OnNetworkViewMouseMove));
-                    _networkView.RemoveHandler(UIElement.MouseLeftButtonUpEvent, new MouseButtonEventHandler(OnNetworkViewMouseLeftButtonUp));
-                }
-
+                // 取消当前连接
                 CancelConnection();
 
-                // 清理端口高亮覆盖层
-                if (_portHighlightOverlay != null)
+                // 移除事件订阅
+                if (_networkView != null)
                 {
-                    var parent = _portHighlightOverlay.Parent as System.Windows.Controls.Panel;
-                    if (parent != null)
-                    {
-                        parent.Children.Remove(_portHighlightOverlay);
-                    }
+                    _networkView.PreviewMouseLeftButtonDown -= OnNetworkViewPreviewMouseLeftButtonDown;
+                    _networkView.PreviewMouseMove -= OnNetworkViewPreviewMouseMove;
+                    _networkView.PreviewMouseLeftButtonUp -= OnNetworkViewPreviewMouseLeftButtonUp;
+
+                    _networkView.MouseLeftButtonDown -= OnNetworkViewMouseLeftButtonDown;
+                    _networkView.MouseMove -= OnNetworkViewMouseMove;
+                    _networkView.MouseLeftButtonUp -= OnNetworkViewMouseLeftButtonUp;
+                }
+
+                // 清理覆盖层
+                if (_portHighlightOverlay != null && _overlayContainer != null)
+                {
+                    _overlayContainer.Children.Remove(_portHighlightOverlay);
                     _portHighlightOverlay = null;
                 }
 
@@ -723,5 +698,7 @@ namespace WorkflowDesigner.UI.Utilities
                 Logger.Error(ex, "释放PortConnectionHandler失败");
             }
         }
+
+        #endregion
     }
 }

@@ -29,36 +29,45 @@
 
             <Rectangle Grid.Row="2" Height="3" Fill="{Binding StatusBrush}" Margin="3"/>
 
-            <!-- 输入端口区域 -->
-            <Grid Grid.Row="0" HorizontalAlignment="Left" Margin="5,5,0,0">
+            <!-- 输入端口区域 - 修复位置 -->
+            <Grid Grid.Row="0" Grid.RowSpan="3" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="-8,0,0,0" Background="Red">
                 <ItemsControl ItemsSource="{Binding Inputs.Items}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Vertical"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
                             <nodenetwork:NodeInputView
                             ViewModel="{Binding}"
+                            Margin="0,2"
                             Width="16" Height="16"
                             Cursor="Hand"
-                            ToolTip="输入端口 - 接收连接"/>
+                            ToolTip="输入端口 - 接收连接"
+                            DataContext="{Binding}"/>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
             </Grid>
 
-            <!-- 输出端口区域 - 审批节点通常有两个输出（通过/拒绝） -->
-            <Grid Grid.Row="2" HorizontalAlignment="Right" Margin="0,0,5,5" Background="Red">
+            <!-- 输出端口区域 - 修复位置 -->
+            <Grid Grid.Row="0" Grid.RowSpan="3" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,-8,0" Background="Red">
                 <ItemsControl ItemsSource="{Binding Outputs.Items}">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
-                            <StackPanel Orientation="Horizontal"/>
+                            <StackPanel Orientation="Vertical"/>
                         </ItemsPanelTemplate>
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
                             <nodenetwork:NodeOutputView
                             ViewModel="{Binding}"
+                            Margin="0,2"
                             Width="16" Height="16"
                             Cursor="Hand"
-                            ToolTip="输出端口 - 拖拽创建连接"/>
+                            ToolTip="输出端口 - 拖拽创建连接"
+                            DataContext="{Binding}"/>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>

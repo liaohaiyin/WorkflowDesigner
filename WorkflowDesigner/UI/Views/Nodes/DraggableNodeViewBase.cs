@@ -1,5 +1,7 @@
 ﻿using ReactiveUI;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Windows;
@@ -48,7 +50,7 @@ namespace WorkflowDesigner.UI.Views.Nodes
             Width = 140;
             Height = 80;
 
-            // 设置Canvas定位属性 - 重要！
+            // 设置Canvas定位属性
             Canvas.SetLeft(this, 0);
             Canvas.SetTop(this, 0);
         }
@@ -91,7 +93,6 @@ namespace WorkflowDesigner.UI.Views.Nodes
         {
             _parentCanvas = FindParentCanvas();
             _mainBorder = FindMainBorder();
-
             if (ViewModel != null && DataContext != ViewModel)
             {
                 DataContext = ViewModel;
@@ -116,6 +117,16 @@ namespace WorkflowDesigner.UI.Views.Nodes
         {
             try
             {
+                var clickPosition = e.GetPosition(this);
+                var hitElement = e.OriginalSource as DependencyObject;
+
+                // 综合检查：元素类型检查 + 位置检查
+                if (IsPortElement(hitElement) || IsInPortArea(clickPosition))
+                {
+                    // 如果点击的是端口区域，不处理节点拖拽
+                    return;
+                }
+
                 if (ViewModel is WorkflowNodeViewModel nodeViewModel)
                 {
                     // 记录拖拽开始位置
@@ -144,6 +155,113 @@ namespace WorkflowDesigner.UI.Views.Nodes
             {
                 System.Diagnostics.Debug.WriteLine($"节点鼠标按下处理失败: {ex.Message}");
             }
+        }
+
+        private bool IsInPortArea(Point clickPosition)
+        {
+            try
+            {
+                // 获取节点内的所有端口区域
+                var inputPortAreas = FindVisualChildren<ItemsControl>(this)
+                    .Where(ic => ic.ItemsSource != null &&
+                                (ic.ItemsSource.GetType().Name.Contains("Input") ||
+                                 ic.ItemsSource.GetType().Name.Contains("Output")));
+
+                foreach (var portArea in inputPortAreas)
+                {
+                    var bounds = new Rect(0, 0, portArea.ActualWidth, portArea.ActualHeight);
+                    var relativePoint = this.TranslatePoint(clickPosition, portArea);
+
+                    if (bounds.Contains(relativePoint))
+                    {
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        // 辅助方法：查找指定类型的子元素
+        private IEnumerable<T> FindVisualChildren<T>(DependencyObject parent) where T : DependencyObject
+        {
+            for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+            {
+                var child = VisualTreeHelper.GetChild(parent, i);
+                if (child is T t)
+                    yield return t;
+
+                foreach (var childOfChild in FindVisualChildren<T>(child))
+                    yield return childOfChild;
+            }
+        }
+        private bool IsPortElement(DependencyObject element)
+        {
+            if (element == null) return false;
+
+            // 向上遍历可视化树，检查是否包含端口相关的控件
+            var current = element;
+            while (current != null && current != this)
+            {
+                // 检查是否是 NodeNetwork 的端口视图
+                var typeName = current.GetType().Name;
+                if (typeName.Contains("PortView") ||
+                    typeName.Contains("NodeInputView") ||
+                    typeName.Contains("NodeOutputView"))
+                {
+                    return true;
+                }
+
+                // 检查 DataContext 是否为端口视图模型
+                if (current is FrameworkElement fe && fe.DataContext != null)
+                {
+                    var dataContextType = fe.DataContext.GetType().Name;
+                    if (dataContextType.Contains("NodeInputViewModel") ||
+                        dataContextType.Contains("NodeOutputViewModel") ||
+                        dataContextType.Contains("PortViewModel"))
+                    {
+                        return true;
+                    }
+                }
+
+                // 检查是否是包含端口的容器（通过名称）
+                if (current is FrameworkElement frameElement)
+                {
+                    var name = frameElement.Name;
+                    if (!string.IsNullOrEmpty(name) &&
+                        (name.Contains("Port") || name.Contains("Input") || name.Contains("Output")))
+                    {
+                        return true;
+                    }
+                }
+
+                // 特殊处理：检查是否在端口区域内（通过位置判断）
+                if (current is Border border)
+                {
+                    // 检查Border的父容器是否有端口相关的内容
+                    var parent = VisualTreeHelper.GetParent(border);
+                    if (parent is ItemsControl itemsControl)
+                    {
+                        var itemsSource = itemsControl.ItemsSource;
+                        if (itemsSource != null)
+                        {
+                            var itemsSourceType = itemsSource.GetType().Name;
+                            if (itemsSourceType.Contains("Input") || itemsSourceType.Contains("Output"))
+                            {
+                                return true;
+                            }
+                        }
+                    }
+                }
+
+                current = VisualTreeHelper.GetParent(current);
+            }
+
+            return false;
         }
 
         private void OnMouseMove(object sender, MouseEventArgs e)

@@ -12,7 +12,7 @@ using WorkflowDesigner.UI.Utilities;
 namespace WorkflowDesigner.UI.Controls
 {
     /// <summary>
-    /// 端口高亮覆盖层 - 在端口连接过程中高亮显示兼容的端口
+    /// 端口高亮覆盖层
     /// </summary>
     public class PortHighlightOverlay : Canvas
     {
@@ -39,8 +39,6 @@ namespace WorkflowDesigner.UI.Controls
         /// <summary>
         /// 高亮兼容的输入端口
         /// </summary>
-        /// <param name="sourceOutput">源输出端口</param>
-        /// <param name="compatibilityChecker">端口兼容性检查器</param>
         public void HighlightCompatibleInputPorts(NodeOutputViewModel sourceOutput, Func<NodeOutputViewModel, NodeInputViewModel, bool> compatibilityChecker)
         {
             try
@@ -83,48 +81,8 @@ namespace WorkflowDesigner.UI.Controls
         }
 
         /// <summary>
-        /// 高亮指定输入端口（通常用于悬停效果）
-        /// </summary>
-        /// <param name="inputPort">要高亮的输入端口</param>
-        /// <param name="isCompatible">是否兼容</param>
-        public void HighlightInputPort(NodeInputViewModel inputPort, bool isCompatible)
-        {
-            try
-            {
-                var color = isCompatible ? Colors.LightGreen : Colors.LightCoral;
-                CreatePortHighlight(inputPort, color);
-                Visibility = Visibility.Visible;
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"高亮输入端口失败: {ex.Message}");
-            }
-        }
-
-        /// <summary>
-        /// 高亮指定输出端口（通常用于悬停效果）
-        /// </summary>
-        /// <param name="outputPort">要高亮的输出端口</param>
-        /// <param name="isCompatible">是否兼容</param>
-        public void HighlightOutputPort(NodeOutputViewModel outputPort, bool isCompatible)
-        {
-            try
-            {
-                var color = isCompatible ? Colors.LightGreen : Colors.LightCoral;
-                CreatePortHighlight(outputPort, color);
-                Visibility = Visibility.Visible;
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"高亮输出端口失败: {ex.Message}");
-            }
-        }
-
-        /// <summary>
         /// 创建端口高亮效果
         /// </summary>
-        /// <param name="port">要高亮的端口（NodeInputViewModel或NodeOutputViewModel）</param>
-        /// <param name="color">高亮颜色</param>
         private void CreatePortHighlight(object port, Color color)
         {
             try
@@ -134,21 +92,21 @@ namespace WorkflowDesigner.UI.Controls
                 {
                     var highlight = new Ellipse
                     {
-                        Width = 16,
-                        Height = 16,
-                        Fill = new SolidColorBrush(Color.FromArgb(100, color.R, color.G, color.B)), // 半透明
+                        Width = 20,
+                        Height = 20,
+                        Fill = new SolidColorBrush(Color.FromArgb(120, color.R, color.G, color.B)), // 半透明
                         Stroke = new SolidColorBrush(color),
                         StrokeThickness = 2,
                         Effect = new System.Windows.Media.Effects.DropShadowEffect
                         {
                             Color = color,
-                            BlurRadius = 8,
+                            BlurRadius = 10,
                             ShadowDepth = 0,
                             Opacity = 0.8
                         }
                     };
 
-                    // 设置位置（已为叠加容器坐标）
+                    // 设置位置
                     Canvas.SetLeft(highlight, portPosition.Value.X - highlight.Width / 2);
                     Canvas.SetTop(highlight, portPosition.Value.Y - highlight.Height / 2);
 
@@ -182,28 +140,39 @@ namespace WorkflowDesigner.UI.Controls
         }
 
         /// <summary>
-        /// 获取端口在叠加容器中的位置
+        /// 获取端口在叠加容器中的位置 - 修复版本
         /// </summary>
-        /// <param name="port">端口视图模型（NodeInputViewModel或NodeOutputViewModel）</param>
-        /// <returns>端口位置，如果找不到则返回null</returns>
         private Point? GetPortPosition(object port)
         {
             try
             {
-                // 验证端口有效性
                 if (!PortViewModelHelper.IsValidPort(port))
                 {
                     return null;
                 }
 
-                // 通过视觉树查找对应的PortView控件
-                var portView = FindPortView(_networkView, port);
+                // 使用递归方式查找PortView
+                var portView = FindPortViewRecursive(_networkView, port);
                 if (portView != null)
                 {
-                    // 坐标从 NetworkView 转换到 叠加容器
-                    var transform = portView.TransformToAncestor(_overlayContainer);
-                    var portCenter = transform.Transform(new Point(portView.ActualWidth / 2, portView.ActualHeight / 2));
-                    return portCenter;
+                    try
+                    {
+                        // 获取端口在NetworkView中的位置
+                        var portBounds = new Rect(0, 0, portView.ActualWidth, portView.ActualHeight);
+                        var portCenter = new Point(
+                            portBounds.X + portBounds.Width / 2,
+                            portBounds.Y + portBounds.Height / 2
+                        );
+
+                        // 转换到overlay容器坐标系
+                        var transform = portView.TransformToAncestor(_overlayContainer);
+                        return transform.Transform(portCenter);
+                    }
+                    catch (InvalidOperationException)
+                    {
+                        // 如果坐标转换失败，尝试备用方法
+                        return GetPortPositionAlternative(port);
+                    }
                 }
 
                 return null;
@@ -216,25 +185,58 @@ namespace WorkflowDesigner.UI.Controls
         }
 
         /// <summary>
-        /// 在视觉树中查找指定端口的PortView
+        /// 备用的端口位置获取方法
         /// </summary>
-        /// <param name="parent">父容器</param>
-        /// <param name="port">目标端口视图模型（NodeInputViewModel或NodeOutputViewModel）</param>
-        /// <returns>对应的PortView，如果找不到则返回null</returns>
-        private PortView FindPortView(DependencyObject parent, object port)
+        private Point? GetPortPositionAlternative(object port)
         {
             try
             {
-                for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+                if (port is NodeInputViewModel inputPort && inputPort.Parent != null)
                 {
-                    var child = VisualTreeHelper.GetChild(parent, i);
+                    // 对于输入端口，位置在节点左侧
+                    var nodePosition = inputPort.Parent.Position;
+                    return new Point(nodePosition.X - 10, nodePosition.Y + 25);
+                }
+                else if (port is NodeOutputViewModel outputPort && outputPort.Parent != null)
+                {
+                    // 对于输出端口，位置在节点右侧
+                    var nodePosition = outputPort.Parent.Position;
+                    return new Point(nodePosition.X + 150, nodePosition.Y + 55);
+                }
 
-                    if (child is PortView portView && portView.ViewModel == port)
+                return null;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"备用端口位置获取失败: {ex.Message}");
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// 递归查找PortView
+        /// </summary>
+        private PortView FindPortViewRecursive(DependencyObject parent, object targetPort)
+        {
+            try
+            {
+                if (parent == null) return null;
+
+                // 检查当前对象是否是目标PortView
+                if (parent is PortView portView)
+                {
+                    if (IsMatchingPortView(portView, targetPort))
                     {
                         return portView;
                     }
+                }
 
-                    var result = FindPortView(child, port);
+                // 递归搜索子元素
+                var childrenCount = VisualTreeHelper.GetChildrenCount(parent);
+                for (int i = 0; i < childrenCount; i++)
+                {
+                    var child = VisualTreeHelper.GetChild(parent, i);
+                    var result = FindPortViewRecursive(child, targetPort);
                     if (result != null)
                     {
                         return result;
@@ -245,8 +247,40 @@ namespace WorkflowDesigner.UI.Controls
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"查找PortView失败: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"递归查找PortView失败: {ex.Message}");
                 return null;
+            }
+        }
+
+        /// <summary>
+        /// 检查PortView是否匹配目标端口
+        /// </summary>
+        private bool IsMatchingPortView(PortView portView, object targetPort)
+        {
+            try
+            {
+                if (portView?.ViewModel == null) return false;
+
+                // 方法1：直接比较ViewModel
+                if (portView.ViewModel == targetPort) return true;
+
+                // 方法2：通过反射获取Port属性
+                var portProperty = portView.ViewModel.GetType().GetProperty("Port");
+                if (portProperty != null)
+                {
+                    var port = portProperty.GetValue(portView.ViewModel);
+                    if (port == targetPort) return true;
+                }
+
+                // 方法3：检查DataContext
+                if (portView.DataContext == targetPort) return true;
+
+                return false;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"匹配PortView失败: {ex.Message}");
+                return false;
             }
         }
 
@@ -259,6 +293,12 @@ namespace WorkflowDesigner.UI.Controls
             {
                 foreach (var highlight in _highlightElements)
                 {
+                    // 停止动画
+                    if (highlight.RenderTransform is ScaleTransform transform)
+                    {
+                        transform.BeginAnimation(ScaleTransform.ScaleXProperty, null);
+                        transform.BeginAnimation(ScaleTransform.ScaleYProperty, null);
+                    }
                     Children.Remove(highlight);
                 }
                 _highlightElements.Clear();
@@ -273,17 +313,13 @@ namespace WorkflowDesigner.UI.Controls
         /// <summary>
         /// 高亮悬停的输入端口
         /// </summary>
-        /// <param name="inputPort">悬停的输入端口</param>
-        /// <param name="isCompatible">是否与当前连接兼容</param>
         public void HighlightHoveredInputPort(NodeInputViewModel inputPort, bool isCompatible)
         {
             try
             {
                 ClearHighlights();
-
                 var color = isCompatible ? Colors.Gold : Colors.Red;
                 CreatePortHighlight(inputPort, color);
-
                 Visibility = Visibility.Visible;
             }
             catch (Exception ex)
@@ -295,17 +331,13 @@ namespace WorkflowDesigner.UI.Controls
         /// <summary>
         /// 高亮悬停的输出端口
         /// </summary>
-        /// <param name="outputPort">悬停的输出端口</param>
-        /// <param name="isCompatible">是否与当前连接兼容</param>
         public void HighlightHoveredOutputPort(NodeOutputViewModel outputPort, bool isCompatible)
         {
             try
             {
                 ClearHighlights();
-
                 var color = isCompatible ? Colors.Gold : Colors.Red;
                 CreatePortHighlight(outputPort, color);
-
                 Visibility = Visibility.Visible;
             }
             catch (Exception ex)

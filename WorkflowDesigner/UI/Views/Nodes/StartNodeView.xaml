@@ -26,34 +26,30 @@
 
             <!-- 内容区域 -->
             <Grid Grid.Row="1" Margin="8,2">
-                <TextBlock Text="{Binding NodeName}" 
+                <TextBlock x:Name="bb" Text="{Binding NodeName}" 
                          FontSize="12" HorizontalAlignment="Center" 
                          VerticalAlignment="Center" TextWrapping="Wrap"
                          Foreground="#1B5E20" TextAlignment="Center"/>
             </Grid>
 
-            <!-- 输出端口区域 -->
-            <Grid Grid.Row="2" Margin="5,2,5,5">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-
-                <!-- 输出端口（绑定到 Outputs.Items） -->
-                <ItemsControl Grid.Column="1" Margin="-30,0" ItemsSource="{Binding Outputs.Items}" Background="Red">
+            <!-- 输出端口区域 - 修复位置 -->
+            <Grid Grid.Row="0" Grid.RowSpan="3" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,-8,0">
+                <ItemsControl ItemsSource="{Binding Outputs.Items}" Background="Red">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
-                            <StackPanel Orientation="Horizontal"/>
+                            <StackPanel Orientation="Vertical"/>
                         </ItemsPanelTemplate>
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
                             <nodenetwork:NodeOutputView
                                         ViewModel="{Binding}"
-                                        Margin="0,0,5,0"
+                                        Margin="0,2"
                                         Width="16" Height="16"
                                         Cursor="Hand"
-                                        ToolTip="输出端口 - 拖拽创建连接"/>
+                                        ToolTip="输出端口 - 拖拽创建连接"
+                                        DataContext="{Binding}"
+                                        Background="Red"/>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>

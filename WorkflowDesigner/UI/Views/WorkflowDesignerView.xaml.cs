@@ -126,6 +126,13 @@ namespace WorkflowDesigner.UI.Views
                     // 创建端口连接处理器
                     _portConnectionHandler = new PortConnectionHandler(networkView, ViewModel.Network, _connectionManager);
 
+                    // 确保 NetworkView 事件处理顺序正确
+                    networkView.Loaded += (s, e) =>
+                    {
+                        // NetworkView 加载完成后，确保端口事件优先处理
+                        networkView.PreviewMouseLeftButtonDown += NetworkView_PreviewMouseLeftButtonDown;
+                    };
+
                     UpdateStatusText("端口连接功能已初始化");
                 }
             }
@@ -187,6 +194,43 @@ namespace WorkflowDesigner.UI.Views
             }
         }
 
+        // 检查是否为端口相关元素
+        private bool IsPortRelatedElement(Visual visual)
+        {
+            if (visual == null) return false;
+
+            var current = visual as DependencyObject;
+            while (current != null)
+            {
+                var typeName = current.GetType().Name;
+                if (typeName.Contains("PortView") ||
+                    typeName.Contains("NodeInputView") ||
+                    typeName.Contains("NodeOutputView") ||
+                    typeName.Contains("Connector"))
+                {
+                    return true;
+                }
+
+                current = VisualTreeHelper.GetParent(current);
+            }
+
+            return false;
+        }
+
+        // 获取命中目标的辅助方法
+        private Visual GetHitTarget(Point position)
+        {
+            try
+            {
+                var hitTest = VisualTreeHelper.HitTest(networkView, position);
+                return hitTest?.VisualHit as Visual;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"获取命中目标失败: {ex.Message}");
+                return null;
+            }
+        }
         #endregion
 
         #region 拖拽功能
@@ -236,6 +280,25 @@ namespace WorkflowDesigner.UI.Views
         #endregion
 
         #region 鼠标事件处理
+
+        private void NetworkView_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            try
+            {
+                var hitTarget = GetHitTarget(e.GetPosition(networkView));
+
+                // 检查是否点击了端口
+                if (IsPortRelatedElement(hitTarget))
+                {
+                    // 如果是端口相关元素，标记事件已处理，防止节点拖拽
+                    e.Handled = true;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"NetworkView预览事件处理失败: {ex.Message}");
+            }
+        }
 
         private void OnMouseMove(object sender, MouseEventArgs e)
         {
