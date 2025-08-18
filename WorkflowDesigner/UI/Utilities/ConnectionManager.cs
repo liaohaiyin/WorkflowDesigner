@@ -78,8 +78,11 @@ namespace WorkflowDesigner.UI.Utilities
                     }
 
                     // 创建新连接
-                    var connection = new ConnectionViewModel(_network, targetInput, sourceOutput);
-                    _network.Connections.Add(connection);
+                    Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        var connection = new ConnectionViewModel(_network, targetInput, sourceOutput);
+                        _network.Connections.Add(connection);
+                    });
 
                     Logger.Info($"成功创建端口连接: {sourceNode.NodeName}({sourceOutput.Name}) -> {targetNode.NodeName}({targetInput.Name})");
                     return true;

@@ -102,10 +102,13 @@
 
                 <!-- NodeNetwork视图 -->
                 <nodenetwork:NetworkView  Grid.Row="1" x:Name="networkView" 
-                             ViewModel="{Binding Network}" 
-                             Background="Transparent"
-                             HorizontalAlignment="Stretch"
-                             VerticalAlignment="Stretch"/>
+                                         ViewModel="{Binding Network}" 
+                                         Background="Transparent"
+                                         HorizontalAlignment="Stretch"
+                                         VerticalAlignment="Stretch"
+                                          RenderTransformOrigin="0.5,0.5"
+                                          UseLayoutRounding="False"
+                                          SnapsToDevicePixels="False"/>
                 <!-- 选择框 -->
                 <Rectangle x:Name="SelectionRectangle" 
                            Fill="LightBlue" Opacity="0.3" 

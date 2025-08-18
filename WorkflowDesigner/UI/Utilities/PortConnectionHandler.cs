@@ -1,4 +1,3 @@
-// 方案：基于节点区域判断，自动识别输入/输出区域
 using NLog;
 using NodeNetwork.ViewModels;
 using NodeNetwork.Views;
@@ -22,6 +21,7 @@ public class PortConnectionHandler
 
     private bool _isConnecting = false;
     private WorkflowNodeViewModel _sourceNode = null;
+    private NodeOutputViewModel _sourceOutput = null; // 添加具体的源端口引用
     private Point _startPosition;
     private Point _currentMousePosition;
     private ConnectionPreviewControl _connectionPreview = null;
@@ -44,11 +44,11 @@ public class PortConnectionHandler
     private void OnNetworkViewPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         var position = e.GetPosition(_networkView);
-        var (node, isOutputArea) = GetNodeAndPortArea(position);
+        var (node, outputPort, isOutputArea) = GetNodeAndOutputPort(position);
 
-        if (node != null && isOutputArea)
+        if (node != null && outputPort != null && isOutputArea)
         {
-            StartConnection(node, position);
+            StartConnection(node, outputPort, position);
             e.Handled = true;
         }
     }
@@ -67,11 +67,11 @@ public class PortConnectionHandler
         if (_isConnecting)
         {
             var position = e.GetPosition(_networkView);
-            var (targetNode, isInputArea) = GetNodeAndPortArea(position);
+            var (targetNode, inputPort, isInputArea) = GetNodeAndInputPort(position);
 
-            if (targetNode != null && isInputArea && targetNode != _sourceNode)
+            if (targetNode != null && inputPort != null && isInputArea && targetNode != _sourceNode)
             {
-                CompleteConnection(_sourceNode, targetNode);
+                CompleteConnection(_sourceOutput, inputPort);
             }
 
             CancelConnection();
@@ -79,38 +79,93 @@ public class PortConnectionHandler
         }
     }
 
-    // 核心方法：根据位置判断节点和端口区域
-    private (WorkflowNodeViewModel node, bool isPortArea) GetNodeAndPortArea(Point position)
+    // 修复：更精确的端口检测，分别处理输入和输出端口
+    private (WorkflowNodeViewModel node, NodeOutputViewModel outputPort, bool isPortArea) GetNodeAndOutputPort(Point position)
     {
+        try
+        {
+            var found = PortViewModelHelper.FindPortAtPosition(_networkView, position, tolerance: 4);
+            if (found is NodeOutputViewModel outVm && outVm.Parent is WorkflowNodeViewModel parentNode)
+            {
+                return (parentNode, outVm, true);
+            }
+            // 如果命中到 Input（可能用户从右向左拖），忽略
+            if (found is NodeInputViewModel)
+            {
+                return (null, null, false);
+            }
+        }
+        catch
+        {
+        }
+
+        // 2) 兜底：保留原先的矩形判断（原实现）
         var node = GetNodeAtPosition(position);
-        if (node == null) return (null, false);
+        if (node == null) return (null, null, false);
 
         var nodePosition = node.Position;
-        var nodeWidth = 140;  // 节点宽度
-        var nodeHeight = 80;  // 节点高度
-        var portAreaWidth = 20; // 端口区域宽度
+        var nodeWidth = 140;
+        var nodeHeight = 80;
+        var portAreaWidth = 20;
 
-        // 计算相对于节点的位置
         var relativeX = position.X - nodePosition.X;
         var relativeY = position.Y - nodePosition.Y;
 
-        // 检查是否在节点范围内
         if (relativeX < 0 || relativeX > nodeWidth || relativeY < 0 || relativeY > nodeHeight)
-            return (node, false);
-
-        // 左侧区域 = 输入端口区域
-        if (relativeX <= portAreaWidth && HasInputPorts(node))
-        {
-            return (node, true); // 输入区域
-        }
+            return (node, null, false);
 
         // 右侧区域 = 输出端口区域  
         if (relativeX >= nodeWidth - portAreaWidth && HasOutputPorts(node))
         {
-            return (node, true); // 输出区域
+            var outputPort = GetBestOutputPort(node);
+            return (node, outputPort, true);
         }
 
-        return (node, false);
+        return (node, null, false);
+    }
+
+    private (WorkflowNodeViewModel node, NodeInputViewModel inputPort, bool isPortArea) GetNodeAndInputPort(Point position)
+    {
+        try
+        {
+            var found = PortViewModelHelper.FindPortAtPosition(_networkView, position, tolerance: 4);
+            if (found is NodeInputViewModel inVm && inVm.Parent is WorkflowNodeViewModel parentNode)
+            {
+                return (parentNode, inVm, true);
+            }
+            if (found is NodeOutputViewModel)
+            {
+                return (null, null, false);
+            }
+        }
+        catch
+        {
+            // 忽略，走兜底逻辑
+        }
+
+        // 2) 兜底：原始矩形判断
+        var node = GetNodeAtPosition(position);
+        if (node == null) return (null, null, false);
+
+        var nodePosition = node.Position;
+        var nodeWidth = 140;
+        var nodeHeight = 80;
+        var portAreaWidth = 20;
+
+        var relativeX = position.X - nodePosition.X;
+        var relativeY = position.Y - nodePosition.Y;
+
+        if (relativeX < 0 || relativeX > nodeWidth || relativeY < 0 || relativeY > nodeHeight)
+            return (node, null, false);
+
+        // 左侧区域 = 输入端口区域
+        if (relativeX <= portAreaWidth && HasInputPorts(node))
+        {
+            var inputPort = GetBestInputPort(node);
+            return (node, inputPort, true);
+        }
+
+        return (node, null, false);
     }
 
     private WorkflowNodeViewModel GetNodeAtPosition(Point position)
@@ -143,39 +198,83 @@ public class PortConnectionHandler
         return node.Outputs?.Items?.Any() == true;
     }
 
-    private void StartConnection(WorkflowNodeViewModel sourceNode, Point startPosition)
+    private NodeOutputViewModel GetBestOutputPort(WorkflowNodeViewModel node)
+    {
+        return node.Outputs?.Items?.FirstOrDefault();
+    }
+
+    private NodeInputViewModel GetBestInputPort(WorkflowNodeViewModel node)
+    {
+        return node.Inputs?.Items?.FirstOrDefault();
+    }
+
+    private void StartConnection(WorkflowNodeViewModel sourceNode, NodeOutputViewModel sourceOutput, Point startPosition)
     {
         _isConnecting = true;
         _sourceNode = sourceNode;
+        _sourceOutput = sourceOutput; // 保存具体的输出端口引用
         _startPosition = startPosition;
         _currentMousePosition = startPosition;
 
         _networkView.CaptureMouse();
         CreateConnectionPreview();
+
+        Logger.Debug($"开始连接: {sourceNode.NodeName}.{sourceOutput.Name}");
     }
 
-    private void CompleteConnection(WorkflowNodeViewModel sourceNode, WorkflowNodeViewModel targetNode)
+    private void CompleteConnection(NodeOutputViewModel sourceOutput, NodeInputViewModel targetInput)
     {
         try
         {
-            // 获取第一个可用的输出和输入端口
-            var sourceOutput = sourceNode.Outputs?.Items?.FirstOrDefault();
-            var targetInput = targetNode.Inputs?.Items?.FirstOrDefault();
-
             if (sourceOutput != null && targetInput != null)
             {
                 if (_connectionManager.IsValidPortConnection(sourceOutput, targetInput, out string errorMessage))
                 {
-                    _connectionManager.CreatePortConnection(sourceOutput, targetInput);
+                    bool success = _connectionManager.CreatePortConnection(sourceOutput, targetInput);
+
+                    if (success)
+                    {
+                        Logger.Info($"连接成功: {sourceOutput.Parent?.Name}.{sourceOutput.Name} -> {targetInput.Parent?.Name}.{targetInput.Name}");
+
+                        // 关键修复：强制刷新 NetworkView 以显示新连接
+                        Application.Current.Dispatcher.BeginInvoke(new Action(() =>
+                        {
+                            try
+                            {
+                                _networkView.InvalidateVisual();
+                                _networkView.UpdateLayout();
+
+                                // 额外确保连接在视觉树中正确渲染
+                                if (_networkView.Parent is Panel parentPanel)
+                                {
+                                    parentPanel.InvalidateVisual();
+                                    parentPanel.UpdateLayout();
+                                }
+
+                                Logger.Debug("NetworkView 连接渲染已刷新");
+                            }
+                            catch (Exception ex)
+                            {
+                                Logger.Error(ex, "刷新 NetworkView 连接显示失败");
+                            }
+                        }), System.Windows.Threading.DispatcherPriority.Render);
+                    }
+                    else
+                    {
+                        Logger.Warn("连接创建失败");
+                        ShowConnectionError("连接创建失败");
+                    }
                 }
                 else
                 {
+                    Logger.Warn($"连接验证失败: {errorMessage}");
                     ShowConnectionError(errorMessage);
                 }
             }
         }
         catch (Exception ex)
         {
+            Logger.Error(ex, "完成连接时发生异常");
             ShowConnectionError($"连接失败: {ex.Message}");
         }
     }
@@ -184,8 +283,11 @@ public class PortConnectionHandler
     {
         _isConnecting = false;
         _sourceNode = null;
+        _sourceOutput = null; // 清理端口引用
         _networkView.ReleaseMouseCapture();
         RemoveConnectionPreview();
+
+        Logger.Debug("连接已取消");
     }
 
     private void CreateConnectionPreview()
@@ -193,8 +295,13 @@ public class PortConnectionHandler
         if (_connectionPreview == null)
         {
             _connectionPreview = new ConnectionPreviewControl();
-            var parent = _networkView.Parent as Panel;
-            parent?.Children.Add(_connectionPreview);
+            var parent = FindOverlayContainer();
+            if (parent != null)
+            {
+                parent.Children.Add(_connectionPreview);
+                // 确保预览控件在最顶层
+                Panel.SetZIndex(_connectionPreview, 1000);
+            }
         }
 
         _connectionPreview.ShowPreview(_startPosition, _currentMousePosition);
@@ -205,8 +312,11 @@ public class PortConnectionHandler
         _connectionPreview?.UpdatePreview(_startPosition, _currentMousePosition);
 
         // 检查当前位置是否有有效目标
-        var (targetNode, isInputArea) = GetNodeAndPortArea(_currentMousePosition);
-        bool isValidTarget = targetNode != null && isInputArea && targetNode != _sourceNode;
+        var (targetNode, inputPort, isInputArea) = GetNodeAndInputPort(_currentMousePosition);
+        bool isValidTarget = targetNode != null && inputPort != null && isInputArea &&
+                            targetNode != _sourceNode &&
+                            _connectionManager.IsValidPortConnection(_sourceOutput, inputPort, out _);
+
         _connectionPreview?.SetValidationState(isValidTarget);
     }
 
@@ -214,16 +324,34 @@ public class PortConnectionHandler
     {
         if (_connectionPreview != null)
         {
-            var parent = _networkView.Parent as Panel;
-            parent?.Children.Remove(_connectionPreview);
+            var parent = FindOverlayContainer();
+            if (parent != null && parent.Children.Contains(_connectionPreview))
+            {
+                parent.Children.Remove(_connectionPreview);
+            }
             _connectionPreview = null;
         }
     }
 
+    private Panel FindOverlayContainer()
+    {
+        // 查找适合放置预览控件的容器
+        var current = _networkView.Parent;
+        while (current != null)
+        {
+            if (current is Panel panel)
+            {
+                return panel;
+            }
+            current = LogicalTreeHelper.GetParent(current);
+        }
+        return _networkView.Parent as Panel;
+    }
+
     private void ShowConnectionError(string message)
     {
-        // 可以显示临时提示或记录日志
         Logger.Warn($"连接错误: {message}");
+        // 这里可以显示临时提示或气泡提示
     }
 
     public void Dispose()
@@ -235,92 +363,6 @@ public class PortConnectionHandler
             _networkView.PreviewMouseMove -= OnNetworkViewPreviewMouseMove;
             _networkView.PreviewMouseLeftButtonUp -= OnNetworkViewPreviewMouseLeftButtonUp;
         }
-    }
-}
-
-// 增强的ConnectionManager，支持智能端口选择
-public class SmartConnectionManager : ConnectionManager
-{
-    public SmartConnectionManager(NetworkViewModel network) : base(network) { }
-
-    // 智能选择最佳端口组合
-    public bool CreateSmartConnection(WorkflowNodeViewModel sourceNode, WorkflowNodeViewModel targetNode)
-    {
-        try
-        {
-            if (!IsValidConnection(sourceNode, targetNode, out string errorMessage))
-            {
-                return false;
-            }
-
-            // 获取最佳端口组合
-            var (bestOutput, bestInput) = GetBestPortPair(sourceNode, targetNode);
-
-            if (bestOutput != null && bestInput != null)
-            {
-                return CreatePortConnection(bestOutput, bestInput);
-            }
-
-            return false;
-        }
-        catch
-        {
-            return false;
-        }
-    }
-
-    private (NodeOutputViewModel output, NodeInputViewModel input) GetBestPortPair(
-        WorkflowNodeViewModel sourceNode, WorkflowNodeViewModel targetNode)
-    {
-        var outputs = sourceNode.Outputs?.Items?.ToList() ?? new List<NodeOutputViewModel>();
-        var inputs = targetNode.Inputs?.Items?.ToList() ?? new List<NodeInputViewModel>();
-
-        if (!outputs.Any() || !inputs.Any())
-            return (null, null);
-
-        // 优先选择未连接的端口
-        var availableOutputs = outputs.Where(o => !IsOutputPortConnected(o)).ToList();
-        var availableInputs = inputs.Where(i => !IsInputPortConnected(i) || targetNode.AllowMultipleInputs).ToList();
-
-        if (!availableOutputs.Any()) availableOutputs = outputs;
-        if (!availableInputs.Any()) availableInputs = inputs;
-
-        // 智能匹配端口名称
-        foreach (var output in availableOutputs)
-        {
-            foreach (var input in availableInputs)
-            {
-                if (ArePortsCompatible(output, input))
-                {
-                    return (output, input);
-                }
-            }
-        }
-        // 如果没有完美匹配，返回第一个可用组合
-        return (availableOutputs.FirstOrDefault(), availableInputs.FirstOrDefault());
-    }
-
-    private bool ArePortsCompatible(NodeOutputViewModel output, NodeInputViewModel input)
-    {
-        // 检查端口名称匹配
-        var outputName = output.Name?.ToLower() ?? "";
-        var inputName = input.Name?.ToLower() ?? "";
-
-        // 标准端口名称匹配
-        if ((outputName.Contains("output") && inputName.Contains("input")) ||
-            (outputName.Contains("完成") && inputName.Contains("输入")) ||
-            (outputName.Contains("success") && inputName.Contains("input")))
-        {
-            return true;
-        }
-
-        // 判断节点特殊匹配
-        if (output.Parent is DecisionNodeViewModel)
-        {
-            return outputName.Contains("是") || outputName.Contains("否") ||
-                   outputName.Contains("true") || outputName.Contains("false");
-        }
-
-        return true; // 默认兼容
+        Logger.Debug("PortConnectionHandler 已释放");
     }
 }

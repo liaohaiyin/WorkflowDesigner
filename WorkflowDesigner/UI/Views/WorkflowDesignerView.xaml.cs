@@ -126,12 +126,32 @@ namespace WorkflowDesigner.UI.Views
                     // 创建端口连接处理器
                     _portConnectionHandler = new PortConnectionHandler(networkView, ViewModel.Network, _connectionManager);
 
-                    // 确保 NetworkView 事件处理顺序正确
-                    networkView.Loaded += (s, e) =>
-                    {
-                        // NetworkView 加载完成后，确保端口事件优先处理
-                        networkView.PreviewMouseLeftButtonDown += NetworkView_PreviewMouseLeftButtonDown;
-                    };
+                    // 监听连接变化 - 关键调试点
+                    ViewModel.Network.Connections.Connect()
+                        .Subscribe(changes =>
+                        {
+                            Application.Current.Dispatcher.BeginInvoke(new Action(() =>
+                            {
+                                var connectionCount = ViewModel.Network.Connections.Count;
+                                UpdateStatusText($"连接数变化: {connectionCount}");
+
+                                // 打印所有连接信息用于调试
+                                foreach (var conn in ViewModel.Network.Connections.Items)
+                                {
+                                    var sourceNode = conn.Output?.Parent?.Name ?? "Unknown";
+                                    var targetNode = conn.Input?.Parent?.Name ?? "Unknown";
+                                    var sourcePort = conn.Output?.Name ?? "Unknown";
+                                    var targetPort = conn.Input?.Name ?? "Unknown";
+
+                                    System.Diagnostics.Debug.WriteLine($"连接: {sourceNode}.{sourcePort} -> {targetNode}.{targetPort}");
+                                }
+
+                                // 强制刷新
+                                networkView.InvalidateVisual();
+                                networkView.UpdateLayout();
+
+                            }), System.Windows.Threading.DispatcherPriority.DataBind);
+                        });
 
                     UpdateStatusText("端口连接功能已初始化");
                 }
