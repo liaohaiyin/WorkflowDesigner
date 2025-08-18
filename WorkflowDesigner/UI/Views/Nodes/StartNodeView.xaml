@@ -25,7 +25,7 @@
             </StackPanel>
 
             <!-- 内容区域 -->
-            <Grid Grid.Row="1" Margin="8,2,8,2">
+            <Grid Grid.Row="1" Margin="8,2">
                 <TextBlock Text="{Binding NodeName}" 
                          FontSize="12" HorizontalAlignment="Center" 
                          VerticalAlignment="Center" TextWrapping="Wrap"
@@ -38,14 +38,25 @@
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-                
-                <!-- 输出端口 -->
-                <nodenetwork:NodeOutputView Grid.Column="1" 
-                                           ViewModel="{Binding Outputs[0]}"
-                                           Margin="0,0,5,0"
-                                           Width="16" Height="16"                                           
-                                           Cursor="Hand"
-                                           ToolTip="输出端口 - 拖拽创建连接" Panel.ZIndex="100" Background="Red"/>
+
+                <!-- 输出端口（绑定到 Outputs.Items） -->
+                <ItemsControl Grid.Column="1" Margin="-30,0" ItemsSource="{Binding Outputs.Items}" Background="Red">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <nodenetwork:NodeOutputView
+                                        ViewModel="{Binding}"
+                                        Margin="0,0,5,0"
+                                        Width="16" Height="16"
+                                        Cursor="Hand"
+                                        ToolTip="输出端口 - 拖拽创建连接"/>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
             </Grid>
         </Grid>
     </Border>

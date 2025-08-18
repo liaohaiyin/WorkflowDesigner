@@ -1,5 +1,4 @@
-﻿// 增强的 NodeViewBase.cs - 支持拖拽功能
-using ReactiveUI;
+﻿using ReactiveUI;
 using System;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
@@ -12,19 +11,18 @@ using WorkflowDesigner.Nodes;
 
 namespace WorkflowDesigner.UI.Views.Nodes
 {
-    /// <summary>
-    /// 支持拖拽的工作流节点视图基类
-    /// </summary>
     public class DraggableNodeViewBase : UserControl, IViewFor, IActivatableView
     {
         public static readonly DependencyProperty ViewModelProperty =
-            DependencyProperty.Register(nameof(ViewModel),typeof(object),typeof(DraggableNodeViewBase), new PropertyMetadata(null, OnViewModelChanged));
+            DependencyProperty.Register(nameof(ViewModel), typeof(object), typeof(DraggableNodeViewBase),
+                new PropertyMetadata(null, OnViewModelChanged));
 
         private bool _isDragging;
         private Point _dragStartPoint;
         private Point _nodeStartPosition;
         private Canvas _parentCanvas;
         private Border _mainBorder;
+        private CompositeDisposable _subscriptions = new CompositeDisposable();
 
         public object ViewModel
         {
@@ -45,37 +43,28 @@ namespace WorkflowDesigner.UI.Views.Nodes
 
         private void InitializeNodeView()
         {
-            // 设置基本属性
             Cursor = Cursors.Hand;
             Focusable = true;
-
-            // 设置默认尺寸
             Width = 140;
             Height = 80;
 
-            // 设置Canvas定位属性
+            // 设置Canvas定位属性 - 重要！
             Canvas.SetLeft(this, 0);
             Canvas.SetTop(this, 0);
         }
 
         private void SetupEventHandlers()
         {
-            // 鼠标事件
             MouseLeftButtonDown += OnMouseLeftButtonDown;
             MouseMove += OnMouseMove;
             MouseLeftButtonUp += OnMouseLeftButtonUp;
             MouseEnter += OnMouseEnter;
             MouseLeave += OnMouseLeave;
-
-            // 键盘事件
             KeyDown += OnKeyDown;
-
-            // 焦点事件
             GotFocus += OnGotFocus;
             LostFocus += OnLostFocus;
-
-            // 加载事件
             Loaded += OnLoaded;
+            Unloaded += OnUnloaded;
         }
 
         private void SetupActivation()
@@ -100,23 +89,28 @@ namespace WorkflowDesigner.UI.Views.Nodes
 
         private void OnLoaded(object sender, RoutedEventArgs e)
         {
-            // 查找父Canvas
             _parentCanvas = FindParentCanvas();
-
-            // 查找主边框
             _mainBorder = FindMainBorder();
 
-            // 确保DataContext正确设置
             if (ViewModel != null && DataContext != ViewModel)
             {
                 DataContext = ViewModel;
                 SetupNodeBindings();
             }
+
+            // 同步位置到Canvas - 重要！
+            SyncPositionToCanvas();
+        }
+
+        private void OnUnloaded(object sender, RoutedEventArgs e)
+        {
+            _subscriptions?.Dispose();
+            _subscriptions = new CompositeDisposable();
         }
 
         #endregion
 
-        #region 拖拽功能
+        #region 拖拽功能修复
 
         private void OnMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
@@ -126,27 +120,21 @@ namespace WorkflowDesigner.UI.Views.Nodes
                 {
                     // 记录拖拽开始位置
                     _dragStartPoint = e.GetPosition(_parentCanvas);
-                    _nodeStartPosition = nodeViewModel.Position;
+                    _nodeStartPosition = new Point(Canvas.GetLeft(this), Canvas.GetTop(this));
 
                     // 处理节点选择
                     if (Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
                     {
-                        // Ctrl+点击：切换选择状态
                         nodeViewModel.IsChecked = !nodeViewModel.IsChecked;
                     }
                     else
                     {
-                        // 普通点击：选择节点
                         nodeViewModel.OnMouseClick();
                     }
 
                     // 开始拖拽
                     StartDrag();
-
-                    // 捕获鼠标
                     CaptureMouse();
-
-                    // 设置焦点
                     Focus();
                 }
 
@@ -169,12 +157,8 @@ namespace WorkflowDesigner.UI.Views.Nodes
                     var deltaY = currentPosition.Y - _dragStartPoint.Y;
 
                     // 计算新位置
-                    var newX = _nodeStartPosition.X + deltaX;
-                    var newY = _nodeStartPosition.Y + deltaY;
-
-                    //// 边界限制
-                    //newX = Math.Max(0, Math.Min(_parentCanvas.ActualWidth - ActualWidth, newX));
-                    //newY = Math.Max(0, Math.Min(_parentCanvas.ActualHeight - ActualHeight, newY));
+                    var newX = Math.Max(0, _nodeStartPosition.X + deltaX);
+                    var newY = Math.Max(0, _nodeStartPosition.Y + deltaY);
 
                     // 网格对齐（可选）
                     if (ShouldSnapToGrid())
@@ -184,7 +168,7 @@ namespace WorkflowDesigner.UI.Views.Nodes
                         newY = Math.Round(newY / gridSize) * gridSize;
                     }
 
-                    // 更新位置
+                    // 更新Canvas位置 - 关键修复！
                     Canvas.SetLeft(this, newX);
                     Canvas.SetTop(this, newY);
 
@@ -216,8 +200,6 @@ namespace WorkflowDesigner.UI.Views.Nodes
                 if (_isDragging)
                 {
                     EndDrag();
-
-                    // 释放鼠标捕获
                     ReleaseMouseCapture();
 
                     // 触发拖拽完成事件
@@ -244,7 +226,6 @@ namespace WorkflowDesigner.UI.Views.Nodes
                 nodeViewModel.StartDrag();
             }
 
-            // 更新视觉状态
             UpdateDragVisual(true);
             Cursor = Cursors.SizeAll;
         }
@@ -258,9 +239,119 @@ namespace WorkflowDesigner.UI.Views.Nodes
                 nodeViewModel.EndDrag();
             }
 
-            // 恢复视觉状态
             UpdateDragVisual(false);
             Cursor = Cursors.Hand;
+        }
+
+        #endregion
+
+        #region 位置同步修复
+
+        private void SyncPositionToCanvas()
+        {
+            if (ViewModel is WorkflowNodeViewModel nodeViewModel)
+            {
+                Canvas.SetLeft(this, nodeViewModel.Position.X);
+                Canvas.SetTop(this, nodeViewModel.Position.Y);
+            }
+        }
+
+        private void SetupNodeBindings()
+        {
+            if (ViewModel is WorkflowNodeViewModel nodeViewModel)
+            {
+                try
+                {
+                    // 监听位置变化并同步到Canvas
+                    nodeViewModel.WhenAnyValue(x => x.Position)
+                        .ObserveOnDispatcher()
+                        .Subscribe(
+                            onNext: position =>
+                            {
+                                try
+                                {
+                                    if (!_isDragging) // 避免拖拽时的循环更新
+                                    {
+                                        Canvas.SetLeft(this, position.X);
+                                        Canvas.SetTop(this, position.Y);
+                                    }
+                                }
+                                catch (Exception ex)
+                                {
+                                    System.Diagnostics.Debug.WriteLine($"位置同步失败: {ex.Message}");
+                                }
+                            },
+                            onError: ex =>
+                            {
+                                System.Diagnostics.Debug.WriteLine($"Position Observable异常: {ex.Message}");
+                            })
+                        .DisposeWith(_subscriptions);
+
+                    nodeViewModel.WhenAnyValue(x => x.IsChecked)
+                        .ObserveOnDispatcher()
+                        .Subscribe(
+                            onNext: isSelected =>
+                            {
+                                try
+                                {
+                                    UpdateSelectionVisual(isSelected);
+                                }
+                                catch (Exception ex)
+                                {
+                                    System.Diagnostics.Debug.WriteLine($"更新选择视觉效果失败: {ex.Message}");
+                                }
+                            },
+                            onError: ex =>
+                            {
+                                System.Diagnostics.Debug.WriteLine($"IsChecked绑定异常: {ex.Message}");
+                            })
+                        .DisposeWith(_subscriptions);
+
+                    nodeViewModel.WhenAnyValue(x => x.IsHovered)
+                        .ObserveOnDispatcher()
+                        .Subscribe(
+                            onNext: isHovered =>
+                            {
+                                try
+                                {
+                                    UpdateHoverVisual(isHovered);
+                                }
+                                catch (Exception ex)
+                                {
+                                    System.Diagnostics.Debug.WriteLine($"更新悬停视觉效果失败: {ex.Message}");
+                                }
+                            },
+                            onError: ex =>
+                            {
+                                System.Diagnostics.Debug.WriteLine($"IsHovered绑定异常: {ex.Message}");
+                            })
+                        .DisposeWith(_subscriptions);
+
+                    nodeViewModel.WhenAnyValue(x => x.IsDragging)
+                        .ObserveOnDispatcher()
+                        .Subscribe(
+                            onNext: isDragging =>
+                            {
+                                try
+                                {
+                                    UpdateDragVisual(isDragging);
+                                }
+                                catch (Exception ex)
+                                {
+                                    System.Diagnostics.Debug.WriteLine($"更新拖拽视觉效果失败: {ex.Message}");
+                                }
+                            },
+                            onError: ex =>
+                            {
+                                System.Diagnostics.Debug.WriteLine($"IsDragging绑定异常: {ex.Message}");
+                            })
+                        .DisposeWith(_subscriptions);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"设置节点绑定失败: {ex.Message}");
+                }
+            }
         }
 
         #endregion
@@ -321,7 +412,6 @@ namespace WorkflowDesigner.UI.Views.Nodes
                             e.Handled = true;
                             break;
 
-                        // 方向键移动节点
                         case Key.Up:
                         case Key.Down:
                         case Key.Left:
@@ -354,13 +444,13 @@ namespace WorkflowDesigner.UI.Views.Nodes
                     newY = Math.Max(0, currentY - moveDistance);
                     break;
                 case Key.Down:
-                    newY = Math.Min(_parentCanvas.ActualHeight - ActualHeight, currentY + moveDistance);
+                    newY = currentY + moveDistance;
                     break;
                 case Key.Left:
                     newX = Math.Max(0, currentX - moveDistance);
                     break;
                 case Key.Right:
-                    newX = Math.Min(_parentCanvas.ActualWidth - ActualWidth, currentX + moveDistance);
+                    newX = currentX + moveDistance;
                     break;
             }
 
@@ -393,100 +483,6 @@ namespace WorkflowDesigner.UI.Views.Nodes
         #endregion
 
         #region 视觉状态更新
-        private CompositeDisposable _subscriptions = new CompositeDisposable();
-        private void SetupNodeBindings()
-        {
-            if (ViewModel is WorkflowNodeViewModel nodeViewModel)
-            {
-                try
-                {
-                    // 安全的绑定设置，带异常处理
-                    nodeViewModel.WhenAnyValue(x => x.IsSelected)
-                        .ObserveOnDispatcher()
-                        .Subscribe(
-                            onNext: isSelected =>
-                            {
-                                try
-                                {
-                                    UpdateSelectionVisual(isSelected);
-                                }
-                                catch (Exception ex)
-                                {
-                                    System.Diagnostics.Debug.WriteLine($"更新选择视觉效果失败: {ex.Message}");
-                                }
-                            },
-                            onError: ex =>
-                            {
-                                System.Diagnostics.Debug.WriteLine($"IsSelected绑定异常: {ex.Message}");
-                            })
-                        .DisposeWith(_subscriptions);
-
-                    nodeViewModel.WhenAnyValue(x => x.IsHovered)
-                        .ObserveOnDispatcher()
-                        .Subscribe(
-                            onNext: isHovered =>
-                            {
-                                try
-                                {
-                                    UpdateHoverVisual(isHovered);
-                                }
-                                catch (Exception ex)
-                                {
-                                    System.Diagnostics.Debug.WriteLine($"更新悬停视觉效果失败: {ex.Message}");
-                                }
-                            },
-                            onError: ex =>
-                            {
-                                System.Diagnostics.Debug.WriteLine($"IsHovered绑定异常: {ex.Message}");
-                            })
-                        .DisposeWith(_subscriptions);
-
-                    nodeViewModel.WhenAnyValue(x => x.IsDragging)
-                        .ObserveOnDispatcher()
-                        .Subscribe(
-                            onNext: isDragging =>
-                            {
-                                try
-                                {
-                                    UpdateDragVisual(isDragging);
-                                }
-                                catch (Exception ex)
-                                {
-                                    System.Diagnostics.Debug.WriteLine($"更新拖拽视觉效果失败: {ex.Message}");
-                                }
-                            },
-                            onError: ex =>
-                            {
-                                System.Diagnostics.Debug.WriteLine($"IsDragging绑定异常: {ex.Message}");
-                            })
-                        .DisposeWith(_subscriptions);
-
-                    nodeViewModel.WhenAnyValue(x => x.Status)
-                        .ObserveOnDispatcher()
-                        .Subscribe(
-                            onNext: status =>
-                            {
-                                try
-                                {
-                                    //UpdateStatusVisual(status);
-                                }
-                                catch (Exception ex)
-                                {
-                                    System.Diagnostics.Debug.WriteLine($"更新状态视觉效果失败: {ex.Message}");
-                                }
-                            },
-                            onError: ex =>
-                            {
-                                System.Diagnostics.Debug.WriteLine($"Status绑定异常: {ex.Message}");
-                            })
-                        .DisposeWith(_subscriptions);
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"设置节点绑定失败: {ex.Message}");
-                }
-            }
-        }
 
         private void UpdateSelectionVisual(bool isSelected)
         {
@@ -567,7 +563,7 @@ namespace WorkflowDesigner.UI.Views.Nodes
                 if (isDragging)
                 {
                     Opacity = 0.7;
-                    Panel.SetZIndex(this, 1000); // 拖拽时提升层级
+                    Panel.SetZIndex(this, 1000);
                 }
                 else
                 {
@@ -578,19 +574,6 @@ namespace WorkflowDesigner.UI.Views.Nodes
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"更新拖拽视觉效果失败: {ex.Message}");
-            }
-        }
-
-        private void UpdatePosition(Point position)
-        {
-            try
-            {
-                Canvas.SetLeft(this, position.X);
-                Canvas.SetTop(this, position.Y);
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"更新位置失败: {ex.Message}");
             }
         }
 
@@ -609,11 +592,6 @@ namespace WorkflowDesigner.UI.Views.Nodes
             return new SolidColorBrush(Color.FromRgb(158, 158, 158));
         }
 
-        private void OnUnloaded(object sender, RoutedEventArgs e)
-        {
-            _subscriptions?.Dispose();
-            _subscriptions = new CompositeDisposable();
-        }
         #endregion
 
         #region 辅助方法
@@ -652,7 +630,6 @@ namespace WorkflowDesigner.UI.Views.Nodes
 
         private bool ShouldSnapToGrid()
         {
-            // 可以从设置或父容器获取网格对齐选项
             return true; // 默认启用网格对齐
         }
 
@@ -684,6 +661,7 @@ namespace WorkflowDesigner.UI.Views.Nodes
                 if (e.NewValue is WorkflowNodeViewModel nodeViewModel)
                 {
                     view.SetupNodeBindings();
+                    view.SyncPositionToCanvas(); // 同步位置
                 }
             }
         }
@@ -692,6 +670,7 @@ namespace WorkflowDesigner.UI.Views.Nodes
     }
 
     #region 事件参数类
+
     public class NodeEventArgs : EventArgs
     {
         public WorkflowNodeViewModel Node { get; }
@@ -719,7 +698,7 @@ namespace WorkflowDesigner.UI.Views.Nodes
     #endregion
 
     public class DraggableNodeViewBase<TViewModel> : DraggableNodeViewBase, IViewFor<TViewModel>
-       where TViewModel : class
+        where TViewModel : class
     {
         public new TViewModel ViewModel
         {
