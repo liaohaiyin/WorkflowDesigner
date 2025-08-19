@@ -82,24 +82,6 @@ public class PortConnectionHandler
     // 修复：更精确的端口检测，分别处理输入和输出端口
     private (WorkflowNodeViewModel node, NodeOutputViewModel outputPort, bool isPortArea) GetNodeAndOutputPort(Point position)
     {
-        try
-        {
-            var found = PortViewModelHelper.FindPortAtPosition(_networkView, position, tolerance: 4);
-            if (found is NodeOutputViewModel outVm && outVm.Parent is WorkflowNodeViewModel parentNode)
-            {
-                return (parentNode, outVm, true);
-            }
-            // 如果命中到 Input（可能用户从右向左拖），忽略
-            if (found is NodeInputViewModel)
-            {
-                return (null, null, false);
-            }
-        }
-        catch
-        {
-        }
-
-        // 2) 兜底：保留原先的矩形判断（原实现）
         var node = GetNodeAtPosition(position);
         if (node == null) return (null, null, false);
 
@@ -126,24 +108,6 @@ public class PortConnectionHandler
 
     private (WorkflowNodeViewModel node, NodeInputViewModel inputPort, bool isPortArea) GetNodeAndInputPort(Point position)
     {
-        try
-        {
-            var found = PortViewModelHelper.FindPortAtPosition(_networkView, position, tolerance: 4);
-            if (found is NodeInputViewModel inVm && inVm.Parent is WorkflowNodeViewModel parentNode)
-            {
-                return (parentNode, inVm, true);
-            }
-            if (found is NodeOutputViewModel)
-            {
-                return (null, null, false);
-            }
-        }
-        catch
-        {
-            // 忽略，走兜底逻辑
-        }
-
-        // 2) 兜底：原始矩形判断
         var node = GetNodeAtPosition(position);
         if (node == null) return (null, null, false);
 
@@ -286,8 +250,6 @@ public class PortConnectionHandler
         _sourceOutput = null; // 清理端口引用
         _networkView.ReleaseMouseCapture();
         RemoveConnectionPreview();
-
-        Logger.Debug("连接已取消");
     }
 
     private void CreateConnectionPreview()

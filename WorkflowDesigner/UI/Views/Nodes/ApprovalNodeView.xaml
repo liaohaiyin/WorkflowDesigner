@@ -40,19 +40,20 @@
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
                             <nodenetwork:NodeInputView
-                            ViewModel="{Binding}"
-                            Margin="0,2"
-                            Width="16" Height="16"
-                            Cursor="Hand"
-                            ToolTip="输入端口 - 接收连接"
-                            DataContext="{Binding}"/>
+                                        ViewModel="{Binding}"
+                                        Margin="0,2"
+                                        Width="16" Height="16"
+                                        Cursor="Hand"
+                                        ToolTip="输入端口 - 接收连接"
+                                        DataContext="{Binding}"/>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
             </Grid>
 
             <!-- 输出端口区域 - 修复位置 -->
-            <Grid Grid.Row="0" Grid.RowSpan="3" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,-8,0" Background="Transparent" IsHitTestVisible="False">
+            <Grid Grid.Row="0" Grid.RowSpan="3" HorizontalAlignment="Right" 
+                  VerticalAlignment="Center" Margin="0,0,-8,0">
                 <ItemsControl ItemsSource="{Binding Outputs.Items}">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
@@ -67,8 +68,7 @@
                                         Width="16" Height="16"
                                         Cursor="Hand"
                                         ToolTip="输出端口 - 拖拽创建连接"
-                                        DataContext="{Binding}"
-                                        IsHitTestVisible="True"/>
+                                        DataContext="{Binding}"/>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
